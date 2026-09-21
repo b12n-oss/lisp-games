@@ -23,9 +23,13 @@ figure to a 2D canvas. babashka/ffi is MIT licensed and the notice is in
 | Runtime | Directory | Binding | Status |
 |---|---|---|---|
 | babashka | [`helitorus-babashka/`](helitorus-babashka) | `babashka.ffi` | runs |
+| jolt | [`helitorus-jolt/`](helitorus-jolt) | `net.b12n/raylib`, `jolt.ffi` | runs |
 | Clojure on the JVM | `helitorus-clojure/` | raylib-clj, coffi over Panama | not written yet |
 | jank | `helitorus-jank/` | `cpp/` interop | not written yet |
-| jolt | `helitorus-jolt/` | `net.b12n/raylib`, `jolt.ffi` | not written yet |
+
+| | |
+|---|---|
+| **babashka** <br> ![babashka](../docs/demos/helitorus-babashka.png) | **jolt** <br> ![jolt](../docs/demos/helitorus-jolt.png) |
 
 ## What makes this one worth porting
 
@@ -41,6 +45,22 @@ So this is where the runtimes should actually separate, and the HUD is built to
 show it: compute milliseconds and draw milliseconds are reported apart, because
 only the first of them is the language's problem. Measured numbers beat guesses
 about which runtime would struggle.
+
+Two ports in, on an M1 Pro:
+
+| Resolution | | compute | draw | fps |
+|---|---|---|---|---|
+| 260 (default) | jolt | 1.5 ms | 1.0 ms | 115 |
+| | babashka | 5.1 ms | 2.3 ms | 115 |
+| 900 (max) | jolt | 5.0 ms | 3.3 ms | ~95 |
+| | babashka | 18.0 ms | 8.3 ms | ~35 |
+
+jolt does the arithmetic about three and a half times faster, which is roughly
+what you would expect from compiled code against an interpreter. The
+interesting half is the top of the table, where both sit at the same frame
+rate, because at 260 rings neither is the bottleneck. It takes 900 rings before
+the gap turns into something a viewer would notice, and that is further than
+the interpreter is usually given credit for.
 
 ## Running it
 

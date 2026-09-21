@@ -18,6 +18,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   ordering, backface test, lighting and palette are unchanged from the
   original. What the port adds is a namespace with a `-main`, the unattended
   run arguments and a batch flush before the screenshot.
+- A jolt port of helitorus, by way of the `helitorus` example in
+  jlt-commons/raylib-jlt, which is itself a port of the same original. Same
+  geometry, typed primitive arrays (`^double/1`, `^int/1`) and the wrapper's
+  rlgl surface. On an M1 Pro it runs the arithmetic about three and a half
+  times faster than babashka: 1.5 ms compute and 1.0 ms draw against 5.1 and
+  2.3 at the default resolution, where both still hold 115 fps because neither
+  is the bottleneck. At 900 rings babashka falls to roughly 35 fps and jolt
+  holds about 95.
 - `NOTICE.md`, which names the author of every original and reproduces its
   licence. The rule the file states, and that this repo is starting with rather
   than retrofitting: a port lands with its credit in the same commit.

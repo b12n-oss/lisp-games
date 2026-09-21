@@ -22,6 +22,12 @@ swept tube, the per-ring painter ordering, the 2D cross-product backface test,
 the lighting and the hsl palette. The ports here keep the maths unchanged and
 change only how each runtime reaches raylib.
 
+The jolt port arrived by way of the `helitorus` example in
+[jlt-commons/raylib-jlt](https://github.com/jlt-commons/raylib-jlt), which is
+itself a port of the same original. Its twenty-one shared constants and the
+`hsl(337..349, 100..78%, 17..72%)` palette are how you can check that for
+yourself.
+
 His own header credits it one step further back, to a Scittle demo that drew the
 same figure to a 2D canvas (`scittle/resources/public/helitorus.html`). We have
 not been able to check that file directly, so this is his attribution repeated

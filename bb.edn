@@ -17,7 +17,12 @@
         :game "helitorus" :dir "helitorus-babashka"
         :runtime "babashka" :binding "babashka.ffi"
         :cmd ["bb" "helitorus"]
-        :desc "raylib over the babashka.ffi built into bb. Scalars throughout by choice, and the surface emitted as one rlgl batch per ring."}])
+        :desc "raylib over the babashka.ffi built into bb. Scalars throughout by choice, and the surface emitted as one rlgl batch per ring."}
+       {:id "helitorus/jolt"
+        :game "helitorus" :dir "helitorus-jolt"
+        :runtime "jolt" :binding "net.b12n/raylib (jolt.ffi)"
+        :cmd ["bb" "helitorus"]
+        :desc "raylib over net.b12n/raylib on jolt.ffi. Same geometry, typed primitive arrays, about three and a half times the arithmetic throughput."}])
 
     (defn port-path [{:keys [game dir]}] (fs/file game dir))
 

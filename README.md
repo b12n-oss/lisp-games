@@ -13,9 +13,11 @@ and every port lands with its credit in the same commit. Who wrote what is in
 
 | Game | Original | Ports |
 |---|---|---|
-| [`helitorus/`](helitorus) | [Michiel Borkent](https://github.com/borkdude), [babashka/ffi](https://github.com/babashka/ffi/blob/main/examples/helitorus.clj) | babashka |
+| [`helitorus/`](helitorus) | [Michiel Borkent](https://github.com/borkdude), [babashka/ffi](https://github.com/babashka/ffi/blob/main/examples/helitorus.clj) | babashka, jolt |
 
-![helitorus in babashka](docs/demos/helitorus-babashka.png)
+| | |
+|---|---|
+| **babashka** <br> ![babashka](docs/demos/helitorus-babashka.png) | **jolt** <br> ![jolt](docs/demos/helitorus-jolt.png) |
 
 ## Layout
 
@@ -74,8 +76,11 @@ These are the same program four ways, so what changes is only how each runtime
 reaches C and what that costs. helitorus is the interesting case, because it
 rebuilds and projects the whole surface in Clojure every frame. The HUD reports
 compute and draw milliseconds separately, so the comparison is a measurement
-rather than a guess. On an M1 Pro at the default resolution, babashka holds
-about 115 fps with 5.1 ms of compute and 2.4 ms of draw per frame.
+rather than a guess. On an M1 Pro, jolt does that arithmetic about three and a
+half times faster than babashka, and at the default resolution both still hold
+exactly 115 fps, because neither is the bottleneck there. Push to 900 rings and
+babashka falls to about 35 fps where jolt holds 95. The full table is in
+[helitorus/README.md](helitorus/README.md).
 
 A sibling repo, [raylib-pacman](https://github.com/b12n-oss/raylib-pacman),
 does the same for Pac-Man across four runtimes and has the longer write-up of

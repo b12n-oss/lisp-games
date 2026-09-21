@@ -1,0 +1,31 @@
+{:tasks
+ {:requires ([babashka.process :as p])
+
+  info {:doc "Every task in this example, grouped"
+        :task (do (println)
+                  (println "  lisp-games / helitorus / helitorus-jolt")
+                  (println "  raylib called from jolt over net.b12n/raylib on jolt.ffi")
+                  (println)
+                  (println "  bb helitorus                  run it, window stays open")
+                  (println "  bb helitorus 10               run it, quit after 10 seconds")
+                  (println "  bb helitorus 3 out.png 40 400 quit after 3, shot frame 40, res 400")
+                  (println "  bb shot                       run 3 seconds, write helitorus.png")
+                  (println "  bb check                      compile the namespace, no window")
+                  (println "  bb doctor                     check jolt and libraylib")
+                  (println))}
+
+  helitorus {:doc "A helix of n windings around a torus, swept into a tube"
+             :task (apply p/shell "jolt" "-M:helitorus" *command-line-args*)}
+
+  shot {:doc "Run for 3 seconds and write helitorus.png on frame 40"
+        :task (p/shell "jolt" "-M:helitorus" "3" "helitorus.png" "40")}
+
+  check {:doc "Compile the namespace without opening a window"
+         :task (do (p/shell "jolt" "-e" "(require (quote lisp-games.helitorus))")
+                   (println "OK  lisp-games.helitorus compiled"))}
+
+  doctor {:doc "Check jolt and libraylib"
+          :task (do (p/shell {:continue true} "sh" "-c"
+                             "printf 'jolt       '; jolt --version 2>/dev/null || echo 'NOT FOUND'")
+                    (p/shell {:continue true} "sh" "-c"
+                             "printf 'libraylib  '; ls /opt/homebrew/lib/libraylib.dylib 2>/dev/null || ldconfig -p 2>/dev/null | grep -m1 libraylib || echo 'NOT FOUND - brew install raylib'"))}}}
