@@ -13,11 +13,12 @@ and every port lands with its credit in the same commit. Who wrote what is in
 
 | Game | Original | Ports |
 |---|---|---|
-| [`helitorus/`](helitorus) | [Michiel Borkent](https://github.com/borkdude), [babashka/ffi](https://github.com/babashka/ffi/blob/main/examples/helitorus.clj) | babashka, jolt |
+| [`helitorus/`](helitorus) | [Michiel Borkent](https://github.com/borkdude), [babashka/ffi](https://github.com/babashka/ffi/blob/main/examples/helitorus.clj) | babashka, jolt, Clojure |
 
 | | |
 |---|---|
 | **babashka** <br> ![babashka](docs/demos/helitorus-babashka.png) | **jolt** <br> ![jolt](docs/demos/helitorus-jolt.png) |
+| **Clojure/JVM** <br> ![clojure](docs/demos/helitorus-clojure.png) | |
 
 ## Layout
 
@@ -76,10 +77,21 @@ These are the same program four ways, so what changes is only how each runtime
 reaches C and what that costs. helitorus is the interesting case, because it
 rebuilds and projects the whole surface in Clojure every frame. The HUD reports
 compute and draw milliseconds separately, so the comparison is a measurement
-rather than a guess. On an M1 Pro, jolt does that arithmetic about three and a
-half times faster than babashka, and at the default resolution both still hold
-exactly 115 fps, because neither is the bottleneck there. Push to 900 rings and
-babashka falls to about 35 fps where jolt holds 95. The full table is in
+rather than a guess. On an M1 Pro:
+
+| Resolution | | compute | draw | fps |
+|---|---|---|---|---|
+| 260 (default) | Clojure | 0.7 ms | 0.3 ms | 115 |
+| | jolt | 1.5 ms | 1.0 ms | 115 |
+| | babashka | 5.1 ms | 2.3 ms | 115 |
+| 900 (max) | Clojure | 2.4 ms | 1.0 ms | 116 |
+| | jolt | 5.0 ms | 3.3 ms | ~95 |
+| | babashka | 18.0 ms | 8.3 ms | ~35 |
+
+At the default resolution all three hold exactly the same frame rate, because
+none of them is the bottleneck there. Push to 900 rings and they separate. The
+longer version, including the reflection trap that made the Clojure number
+thirty times too slow until it was caught, is in
 [helitorus/README.md](helitorus/README.md).
 
 A sibling repo, [raylib-pacman](https://github.com/b12n-oss/raylib-pacman),

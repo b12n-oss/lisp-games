@@ -22,7 +22,12 @@
         :game "helitorus" :dir "helitorus-jolt"
         :runtime "jolt" :binding "net.b12n/raylib (jolt.ffi)"
         :cmd ["bb" "helitorus"]
-        :desc "raylib over net.b12n/raylib on jolt.ffi. Same geometry, typed primitive arrays, about three and a half times the arithmetic throughput."}])
+        :desc "raylib over net.b12n/raylib on jolt.ffi. Same geometry, typed primitive arrays, about three and a half times the arithmetic throughput."}
+       {:id "helitorus/clojure"
+        :game "helitorus" :dir "helitorus-clojure"
+        :runtime "Clojure/JVM" :binding "raylib-clj (coffi / Panama)"
+        :cmd ["bb" "helitorus"]
+        :desc "raylib over raylib-clj, which binds it with coffi on Panama. Structs arrive as maps; rlgl is declared in the example itself. Fastest of the three, and the array type hints are what make it so."}])
 
     (defn port-path [{:keys [game dir]}] (fs/file game dir))
 

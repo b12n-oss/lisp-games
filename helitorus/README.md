@@ -24,12 +24,13 @@ figure to a 2D canvas. babashka/ffi is MIT licensed and the notice is in
 |---|---|---|---|
 | babashka | [`helitorus-babashka/`](helitorus-babashka) | `babashka.ffi` | runs |
 | jolt | [`helitorus-jolt/`](helitorus-jolt) | `net.b12n/raylib`, `jolt.ffi` | runs |
-| Clojure on the JVM | `helitorus-clojure/` | raylib-clj, coffi over Panama | not written yet |
+| Clojure on the JVM | [`helitorus-clojure/`](helitorus-clojure) | raylib-clj, coffi over Panama | runs |
 | jank | `helitorus-jank/` | `cpp/` interop | not written yet |
 
 | | |
 |---|---|
 | **babashka** <br> ![babashka](../docs/demos/helitorus-babashka.png) | **jolt** <br> ![jolt](../docs/demos/helitorus-jolt.png) |
+| **Clojure/JVM** <br> ![clojure](../docs/demos/helitorus-clojure.png) | |
 
 ## What makes this one worth porting
 
@@ -46,21 +47,31 @@ show it: compute milliseconds and draw milliseconds are reported apart, because
 only the first of them is the language's problem. Measured numbers beat guesses
 about which runtime would struggle.
 
-Two ports in, on an M1 Pro:
+Three ports in, on an M1 Pro:
 
 | Resolution | | compute | draw | fps |
 |---|---|---|---|---|
-| 260 (default) | jolt | 1.5 ms | 1.0 ms | 115 |
+| 260 (default) | Clojure | 0.7 ms | 0.3 ms | 115 |
+| | jolt | 1.5 ms | 1.0 ms | 115 |
 | | babashka | 5.1 ms | 2.3 ms | 115 |
-| 900 (max) | jolt | 5.0 ms | 3.3 ms | ~95 |
+| 900 (max) | Clojure | 2.4 ms | 1.0 ms | 116 |
+| | jolt | 5.0 ms | 3.3 ms | ~95 |
 | | babashka | 18.0 ms | 8.3 ms | ~35 |
 
-jolt does the arithmetic about three and a half times faster, which is roughly
-what you would expect from compiled code against an interpreter. The
-interesting half is the top of the table, where both sit at the same frame
-rate, because at 260 rings neither is the bottleneck. It takes 900 rings before
-the gap turns into something a viewer would notice, and that is further than
-the interpreter is usually given credit for.
+The ordering is unsurprising once you see it: a JIT with primitive array stores,
+then an AOT-compiled runtime, then an interpreter. What is worth noticing is
+the top third, where all three sit at exactly the same frame rate, because at
+260 rings none of them is the bottleneck. It takes 900 rings before the gap
+becomes something a viewer would see, and even there babashka is still drawing
+a moving picture. That is further than the interpreter is usually given credit
+for.
+
+One number in that table was wrong by a factor of thirty before it was checked.
+The Clojure port first measured 21 ms compute and 78 ms draw, slower than
+babashka, which is backwards and was the clue. Every `aget` was resolving
+reflectively for want of an array type hint. See
+[helitorus-clojure/README.md](helitorus-clojure/README.md); the lesson
+generalises, since each runtime has its own spelling of this same trap.
 
 ## Running it
 

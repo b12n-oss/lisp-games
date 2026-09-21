@@ -26,6 +26,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   2.3 at the default resolution, where both still hold 115 fps because neither
   is the bottleneck. At 900 rings babashka falls to roughly 35 fps and jolt
   holds about 95.
+- A Clojure/JVM port of helitorus over raylib-clj, which binds raylib with
+  coffi on Panama. Structs arrive as maps rather than packed integers, and the
+  six rlgl calls raylib-clj does not bind are declared in the example itself
+  with coffi's `defcfn`. It is the fastest of the three: 0.7 ms compute and
+  0.3 ms draw at the default resolution, and the only one still holding the
+  full frame cap at 900 rings.
+- **The array type hints in the Clojure port are load-bearing.** Without
+  `^"[D"` / `^"[I"` every `aget` resolves through `clojure.lang.RT`
+  reflectively, which measured 21 ms compute and 78 ms draw, thirty times
+  slower and worse than babashka. The hint must be the array class: `^doubles`
+  on a `def` resolves to `clojure.core/doubles`, the function, and the
+  namespace will not compile.
 - `NOTICE.md`, which names the author of every original and reproduces its
   licence. The rule the file states, and that this repo is starting with rather
   than retrofitting: a port lands with its credit in the same commit.
