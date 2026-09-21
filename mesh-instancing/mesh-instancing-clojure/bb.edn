@@ -1,0 +1,31 @@
+{:tasks
+ {:requires ([babashka.process :as p])
+
+  info {:doc "Every task in this example, grouped"
+        :task (do (println)
+                  (println "  lisp-games / mesh / mesh-clojure")
+                  (println "  raylib called from Clojure over raylib-clj (coffi / Panama)")
+                  (println)
+                  (println "  bb mesh                  run it, window stays open")
+                  (println "  bb mesh 10               run it, quit after 10 seconds")
+                  (println "  bb mesh 3 out.png 40 400 quit after 3, shot frame 40, res 400")
+                  (println "  bb shot                       run 3 seconds, write mesh.png")
+                  (println "  bb check                      load the namespace, no window")
+                  (println "  bb doctor                     check the JDK and libraylib")
+                  (println))}
+
+  mesh {:doc "A helix of n windings around a torus, swept into a tube"
+             :task (apply p/shell "clojure" "-M:mesh" *command-line-args*)}
+
+  shot {:doc "Run for 3 seconds and write mesh.png on frame 40"
+        :task (p/shell "clojure" "-M:mesh" "3" "mesh.png" "40")}
+
+  check {:doc "Load every namespace without opening a window"
+         :task (p/shell "clojure" "-M:check")}
+
+  doctor {:doc "Check the JDK and libraylib"
+          :task (do (p/shell {:continue true} "sh" "-c"
+                             "printf 'java       '; java -version 2>&1 | head -1")
+                    (println "           (needs 22 or newer: coffi sits on Panama)")
+                    (p/shell {:continue true} "sh" "-c"
+                             "printf 'libraylib  '; ls /opt/homebrew/lib/libraylib.dylib 2>/dev/null || ldconfig -p 2>/dev/null | grep -m1 libraylib || echo 'NOT FOUND - brew install raylib'"))}}}
