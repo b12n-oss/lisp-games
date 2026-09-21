@@ -49,7 +49,12 @@
         :game "mesh-instancing" :dir "mesh-instancing-clojure"
         :runtime "Clojure/JVM" :binding "raylib-clj (coffi / Panama)"
         :cmd ["bb" "mesh"]
-        :desc "the same, declaring seven calls and its own Shader/Material aliases, because raylib-clj's split the pointer and flatten the nesting."}])
+        :desc "the same, declaring seven calls and its own Shader/Material aliases, because raylib-clj's split the pointer and flatten the nesting."}
+       {:id "mesh-instancing/jank"
+        :game "mesh-instancing" :dir "mesh-instancing-jank"
+        :runtime "jank" :binding "cpp/ interop (raylib-sys)"
+        :cmd ["bb" "run-release"]
+        :desc "the same, and the only port where Mesh and Material cross by value with no ceremony, because jank has the real header."}])
 
     (defn port-path [{:keys [game dir]}] (fs/file game dir))
 

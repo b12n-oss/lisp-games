@@ -25,7 +25,7 @@ which is what the header of each source file is for. Notices in full are in
 | babashka | [`mesh-instancing-babashka/`](mesh-instancing-babashka) | `babashka.ffi` | runs |
 | jolt | [`mesh-instancing-jolt/`](mesh-instancing-jolt) | `net.b12n/raylib`, `jolt.ffi` | runs |
 | Clojure on the JVM | [`mesh-instancing-clojure/`](mesh-instancing-clojure) | raylib-clj, coffi over Panama | runs |
-| jank | `mesh-instancing-jank/` | `cpp/` interop | not written yet |
+| jank | [`mesh-instancing-jank/`](mesh-instancing-jank) | `cpp/` interop | runs |
 
 ## Two modes, and only one of them is a benchmark
 
@@ -50,22 +50,25 @@ fps and a `spin` fps are not the same measurement.
 
 ## What it costs
 
-On an M1 Pro. Three ports so far.
+On an M1 Pro, all four, every one optimised.
 
 | Mode | Instances | | build | draw | fps |
 |---|---|---|---|---|---|
 | static | 10000 | Clojure | 0.0 ms | 0.4 ms | 114 |
+| | 10000 | jank | 0.0 ms | 0.4 ms | 115 |
 | | 10000 | jolt | 0.0 ms | 0.5 ms | 113 |
 | | 10000 | babashka | 0.0 ms | 0.4 ms | 115 |
 | spin | 10000 | Clojure | 1.9 ms | 0.4 ms | 110 |
+| | 10000 | jank | 6.5 ms | 0.3 ms | 115 |
 | | 10000 | jolt | 27.2 ms | 0.3 ms | 33 |
 | | 10000 | babashka | 50.5 ms | 0.4 ms | 20 |
 | spin | 2000 | Clojure | 0.7 ms | 0.2 ms | 106 |
+| | 2000 | jank | 1.1 ms | 0.2 ms | 114 |
 | | 2000 | jolt | 5.5 ms | 0.2 ms | 115 |
 | | 2000 | babashka | 9.9 ms | 0.3 ms | 87 |
 
 The gaps here are much wider than in [helitorus](../helitorus), where the same
-three sit within about 7x of each other. This game is dominated by writes into
+four sit within about 7x of each other. Here it is 27x from top to bottom. This game is dominated by writes into
 foreign memory rather than by arithmetic, and the three FFIs are further apart
 at that than their languages are at maths. **Two games, two different
 orderings of the same runtimes**, which is a better argument for having both

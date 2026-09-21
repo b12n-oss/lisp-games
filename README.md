@@ -14,7 +14,7 @@ and every port lands with its credit in the same commit. Who wrote what is in
 | Game | Original | Ports |
 |---|---|---|
 | [`helitorus/`](helitorus) | [Michiel Borkent](https://github.com/borkdude), [babashka/ffi](https://github.com/babashka/ffi/blob/main/examples/helitorus.clj) | babashka, jolt, Clojure, jank |
-| [`mesh-instancing/`](mesh-instancing) | [Ramon Santamaria](https://github.com/raysan5), [raylib](https://github.com/raysan5/raylib/blob/master/examples/shaders/shaders_mesh_instancing.c) | babashka |
+| [`mesh-instancing/`](mesh-instancing) | [Ramon Santamaria](https://github.com/raysan5), [raylib](https://github.com/raysan5/raylib/blob/master/examples/shaders/shaders_mesh_instancing.c) | babashka, jolt, Clojure, jank |
 
 | | |
 |---|---|

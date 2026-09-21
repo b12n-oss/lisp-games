@@ -13,6 +13,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   hard, since a `Mesh` is 120 bytes returned by value, a `Material` is 40, and
   `DrawMeshInstanced` takes both plus a pointer to the matrix array. Every
   layout size was checked against a C program built with the same header.
+- jolt, Clojure and jank ports of mesh-instancing, so both games now cover all
+  four runtimes. The `spin` build column at 10000 instances: Clojure 1.9 ms,
+  jank 6.5, jolt 27.2, babashka 50.5.
+- **The two games rank the runtimes with very different spreads.** helitorus
+  puts its work in arithmetic and the four sit within about 7x of each other.
+  mesh-instancing puts its work in writes into foreign memory, and there the
+  spread is 27x. Same ordering, very different distances, which is the
+  argument for having both.
 - **mesh-instancing ships two modes, and only `spin` is a benchmark.** raylib
   builds its matrices once and orbits the camera, so per frame the CPU does
   nothing and the number measures a GPU. `spin` rebuilds every matrix every

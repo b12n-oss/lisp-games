@@ -1,0 +1,338 @@
+;; Mesh instancing, after raylib's examples/shaders/shaders_mesh_instancing.c
+;; by Ramon Santamaria (@raysan5) and contributors, zlib licensed. The cpp/
+;; interop idioms follow the port in b12n-oss/raylib-jnk, and the lighting and
+;; fog shaders follow the jolt port in jlt-commons/raylib-jlt. Altered from all
+;; of them: the run arguments, the `spin` mode, and the matrix arithmetic is
+;; done in jank rather than through raymath.
+;;
+;; See NOTICE.md at the root of this repository for the notices in full.
+
+(ns lisp-games.mesh-instancing
+  "Ten thousand lit cubes in a single draw call.
+
+  Run it with `lein run --disable-sandbox`, or `bb mesh`. Build the -O3 binary
+  with `bb release` and measure THAT, not `lein run`.
+
+  Two modes, because the faithful example is a GPU showcase rather than a
+  benchmark:
+
+    static  the matrices are built once and the camera orbits, which is what
+            raylib does. Per frame the CPU does almost nothing.
+    spin    every matrix is rebuilt every frame, so the frame becomes
+            per-instance arithmetic plus writes into native memory.
+
+  Four things are specific to this port:
+
+  - The matrix array is `MemAlloc` cast to `(:* float)` and written sixteen
+    floats at a time. raylib-jnk notes that `(cpp/new (:array cpp/Matrix n))`
+    does not compile, and a float pointer suits us anyway because the
+    arithmetic happens here rather than in raymath.
+  - **The matrices are computed in jank, not by raymath.** raylib-jnk's port
+    calls MatrixRotate and MatrixMultiply, which is idiomatic and faster, but
+    it would move the work into C and make this port's `build` number a
+    measurement of C rather than of jank. The other three ports compute the
+    same rotation themselves, so this one does too.
+  - A jank fn may not RETURN a native value, so the transform pointer and the
+    Shader both travel as `cpp/box` and are unboxed at each use.
+  - Mesh and Material cross into DrawMeshInstanced by value with no ceremony,
+    because jank has the real header and the C++ compiler knows the types.
+    This is the one FFI here that never had to think about it."
+  (:include "raylib.h" "rlgl.h" "math.h"))
+
+(def ^:const W 800)
+(def ^:const H 450)
+(def ^:const SPREAD 52.0)
+(def TAU 6.283185307179586)
+
+(defn m-cos [x] (+ 0.0 (cpp/cos (cpp/double x))))
+(defn m-sin [x] (+ 0.0 (cpp/sin (cpp/double x))))
+(defn m-sqrt [x] (+ 0.0 (cpp/sqrt (cpp/double x))))
+
+(def vertex-shader "
+#version 330
+in vec3 vertexPosition;
+in vec2 vertexTexCoord;
+in vec3 vertexNormal;
+in mat4 instanceTransform;
+uniform mat4 mvp;
+uniform mat4 matNormal;
+out vec3 fragPosition;
+out vec2 fragTexCoord;
+out vec3 fragNormal;
+void main()
+{
+    fragPosition = vec3(instanceTransform*vec4(vertexPosition, 1.0));
+    fragTexCoord = vertexTexCoord;
+    fragNormal = normalize(vec3(matNormal*vec4(vertexNormal, 1.0)));
+    gl_Position = mvp*instanceTransform*vec4(vertexPosition, 1.0);
+}
+")
+
+(def fragment-shader "
+#version 330
+in vec3 fragPosition;
+in vec2 fragTexCoord;
+in vec3 fragNormal;
+uniform vec4 colDiffuse;
+out vec4 finalColor;
+
+#define MAX_LIGHTS 4
+
+struct Light {
+    int enabled;
+    int type;
+    vec3 position;
+    vec3 target;
+    vec4 color;
+};
+
+uniform Light lights[MAX_LIGHTS];
+uniform vec4 ambient;
+uniform vec3 viewPos;
+uniform vec4 fogColor;
+uniform float fogDensity;
+
+void main()
+{
+    vec3 lightDot = vec3(0.0);
+    vec3 normal = normalize(fragNormal);
+    vec3 viewD = normalize(viewPos - fragPosition);
+    vec3 specular = vec3(0.0);
+
+    for (int i = 0; i < MAX_LIGHTS; i++)
+    {
+        if (lights[i].enabled == 1)
+        {
+            vec3 light = vec3(0.0);
+            if (lights[i].type == 0) light = -normalize(lights[i].target - lights[i].position);
+            else light = normalize(lights[i].position - fragPosition);
+
+            float NdotL = max(dot(normal, light), 0.0);
+            lightDot += lights[i].color.rgb*NdotL;
+
+            float specCo = 0.0;
+            if (NdotL > 0.0) specCo = pow(max(0.0, dot(viewD, reflect(-light, normal))), 16.0);
+            specular += specCo;
+        }
+    }
+
+    finalColor = (colDiffuse + vec4(specular, 1.0))*vec4(lightDot, 1.0);
+    finalColor += (ambient/10.0);
+    finalColor = pow(finalColor, vec4(1.0/2.2));
+
+    float dist = length(viewPos - fragPosition);
+    float fogFactor = clamp(1.0/exp((dist*fogDensity)*(dist*fogDensity)), 0.0, 1.0);
+    finalColor = mix(fogColor, finalColor, fogFactor);
+}
+")
+
+
+;; --- the matrix buffer -------------------------------------------------------
+
+(defn alloc-transforms!
+  "A Matrix is 64 bytes, so this is 64n from MemAlloc, cast to a float pointer
+  because every write below is a float. Boxed, since a jank fn may not return
+  a native value."
+  [n]
+  (cpp/box (cpp/unsafe-cast (:* float)
+                            (cpp/MemAlloc (cpp/cast cpp/uint (* n 64))))))
+
+(defn matrix-set!
+  "Write the instance matrix at index `i`: a rotation of `angle` about the unit
+  axis, then a translation. raylib stores a Matrix as m0 m4 m8 m12 / m1 m5 m9
+  m13, so the translation column lands at slots 3, 7 and 11."
+  [box i ax ay az angle tx ty tz]
+  (let [p (cpp/unbox (:* float) box)
+        base (* 16 i)
+        c (m-cos angle)
+        s (m-sin angle)
+        t (- 1.0 c)]
+    (cpp/= (cpp/aget p (cpp/int (+ base 0))) (cpp/float (+ (* t ax ax) c)))
+    (cpp/= (cpp/aget p (cpp/int (+ base 1))) (cpp/float (- (* t ax ay) (* s az))))
+    (cpp/= (cpp/aget p (cpp/int (+ base 2))) (cpp/float (+ (* t ax az) (* s ay))))
+    (cpp/= (cpp/aget p (cpp/int (+ base 3))) (cpp/float tx))
+    (cpp/= (cpp/aget p (cpp/int (+ base 4))) (cpp/float (+ (* t ax ay) (* s az))))
+    (cpp/= (cpp/aget p (cpp/int (+ base 5))) (cpp/float (+ (* t ay ay) c)))
+    (cpp/= (cpp/aget p (cpp/int (+ base 6))) (cpp/float (- (* t ay az) (* s ax))))
+    (cpp/= (cpp/aget p (cpp/int (+ base 7))) (cpp/float ty))
+    (cpp/= (cpp/aget p (cpp/int (+ base 8))) (cpp/float (- (* t ax az) (* s ay))))
+    (cpp/= (cpp/aget p (cpp/int (+ base 9))) (cpp/float (+ (* t ay az) (* s ax))))
+    (cpp/= (cpp/aget p (cpp/int (+ base 10))) (cpp/float (+ (* t az az) c)))
+    (cpp/= (cpp/aget p (cpp/int (+ base 11))) (cpp/float tz))
+    (cpp/= (cpp/aget p (cpp/int (+ base 12))) (cpp/float 0.0))
+    (cpp/= (cpp/aget p (cpp/int (+ base 13))) (cpp/float 0.0))
+    (cpp/= (cpp/aget p (cpp/int (+ base 14))) (cpp/float 0.0))
+    (cpp/= (cpp/aget p (cpp/int (+ base 15))) (cpp/float 1.0))
+    nil))
+
+(defn scatter
+  "One random placement per instance, generated once whatever the mode."
+  [n]
+  (vec (for [_ (range n)]
+         (let [ax (+ 0.1 (rand 1.0))
+               ay (+ 0.1 (rand 1.0))
+               az (+ 0.1 (rand 1.0))
+               len (m-sqrt (+ (* ax ax) (* ay ay) (* az az)))]
+           [(/ ax len) (/ ay len) (/ az len)
+            (rand TAU)
+            (- (rand SPREAD) (/ SPREAD 2.0))
+            (- (rand SPREAD) (/ SPREAD 2.0))
+            (- (rand SPREAD) (/ SPREAD 2.0))]))))
+
+(defn fill-transforms!
+  "Every instance's matrix at time `t`. The whole of spin mode's frame cost."
+  [box places t]
+  (loop [i 0]
+    (when (< i (count places))
+      (let [pl (nth places i)]
+        (matrix-set! box i (nth pl 0) (nth pl 1) (nth pl 2)
+                     (+ (nth pl 3) t) (nth pl 4) (nth pl 5) (nth pl 6)))
+      (recur (inc i)))))
+
+;; --- the HUD -----------------------------------------------------------------
+;; No JVM, so no format.
+
+(defn r1 [x] (/ (int (+ 0.5 (* 10.0 x))) 10.0))
+
+(defn hud-line [fps build-ms draw-ms n spin?]
+  (str "fps " (int (+ 0.5 fps))
+       " | build " (r1 build-ms) " ms"
+       " | draw " (r1 draw-ms) " ms"
+       " | " n " cubes | " (if spin? "spin" "static")))
+
+(defn text! [s x y size c]
+  (cpp/DrawText s (cpp/int (int x)) (cpp/int (int y)) (cpp/int (int size))
+                (cpp/GetColor (cpp/uint32_t c)))
+  nil)
+
+;; --- the loop ----------------------------------------------------------------
+
+(defn -main
+  "Open a window and run until closed.
+
+  lein run --disable-sandbox 5 out.png 40 2000 spin
+
+  takes [seconds] [out.png] [frame] [instances] [spin]. `seconds` counts GAME
+  time summed from clamped dt, not wall time, because `lein run` compiles as it
+  loads and would otherwise spend the whole budget on frame 0."
+  [& args]
+  (let [secs (if (first args) (int (cpp/TextToInteger (first args))) 0)
+        shot-path (second args)
+        at (if (nth args 2 nil) (int (cpp/TextToInteger (nth args 2 nil))) 40)
+        n (if (nth args 3 nil) (int (cpp/TextToInteger (nth args 3 nil))) 10000)
+        spin? (= "spin" (nth args 4 nil))
+        places (scatter n)
+        transforms (alloc-transforms! n)]
+    (cpp/SetConfigFlags cpp/FLAG_MSAA_4X_HINT)
+    (cpp/InitWindow (cpp/int W) (cpp/int H) "lisp-games - mesh instancing")
+    (cpp/SetTargetFPS (cpp/int 120))
+    (let [cube (cpp/GenMeshCube (cpp/float 0.85) (cpp/float 0.85) (cpp/float 0.85))
+          shader (cpp/LoadShaderFromMemory vertex-shader fragment-shader)
+          mat (cpp/LoadMaterialDefault)
+          ;; a scratch buffer for the vec3/vec4 uniforms
+          ubuf (cpp/unsafe-cast (:* float) (cpp/MemAlloc (cpp/cast cpp/uint 16)))
+          ibuf (cpp/unsafe-cast (:* int) (cpp/MemAlloc (cpp/cast cpp/uint 4)))
+          view-loc (int (cpp/GetShaderLocation shader "viewPos"))]
+      (cpp/= (.-shader mat) shader)
+      (cpp/= (.-color (cpp/aget (.-maps mat) (cpp/int cpp/MATERIAL_MAP_DIFFUSE)))
+             (cpp/Color (cpp/cast cpp/uint8_t 210) (cpp/cast cpp/uint8_t 215)
+                        (cpp/cast cpp/uint8_t 235) (cpp/cast cpp/uint8_t 255)))
+      (fill-transforms! transforms places 0.0)
+
+      ;; uniforms. Each write goes through the scratch buffer, since
+      ;; SetShaderValue takes a const void*.
+      (let [set-f4 (fn [name a b c d]
+                     (cpp/= (cpp/aget ubuf (cpp/int 0)) (cpp/float a))
+                     (cpp/= (cpp/aget ubuf (cpp/int 1)) (cpp/float b))
+                     (cpp/= (cpp/aget ubuf (cpp/int 2)) (cpp/float c))
+                     (cpp/= (cpp/aget ubuf (cpp/int 3)) (cpp/float d))
+                     (cpp/SetShaderValue shader
+                                         (cpp/int (int (cpp/GetShaderLocation shader name)))
+                                         ubuf cpp/SHADER_UNIFORM_VEC4)
+                     nil)
+            set-f3 (fn [name a b c]
+                     (cpp/= (cpp/aget ubuf (cpp/int 0)) (cpp/float a))
+                     (cpp/= (cpp/aget ubuf (cpp/int 1)) (cpp/float b))
+                     (cpp/= (cpp/aget ubuf (cpp/int 2)) (cpp/float c))
+                     (cpp/SetShaderValue shader
+                                         (cpp/int (int (cpp/GetShaderLocation shader name)))
+                                         ubuf cpp/SHADER_UNIFORM_VEC3)
+                     nil)
+            set-f1 (fn [name a]
+                     (cpp/= (cpp/aget ubuf (cpp/int 0)) (cpp/float a))
+                     (cpp/SetShaderValue shader
+                                         (cpp/int (int (cpp/GetShaderLocation shader name)))
+                                         ubuf cpp/SHADER_UNIFORM_FLOAT)
+                     nil)
+            set-i (fn [name v]
+                    (cpp/= (cpp/aget ibuf (cpp/int 0)) (cpp/int (int v)))
+                    (cpp/SetShaderValue shader
+                                        (cpp/int (int (cpp/GetShaderLocation shader name)))
+                                        ibuf cpp/SHADER_UNIFORM_INT)
+                    nil)
+            light! (fn [i kind px py pz r g b]
+                     (set-i (str "lights[" i "].enabled") 1)
+                     (set-i (str "lights[" i "].type") kind)
+                     (set-f3 (str "lights[" i "].position") px py pz)
+                     (set-f3 (str "lights[" i "].target") 0.0 0.0 0.0)
+                     (set-f4 (str "lights[" i "].color")
+                             (/ r 255.0) (/ g 255.0) (/ b 255.0) 1.0)
+                     nil)]
+        (set-f4 "ambient" 0.35 0.35 0.4 1.0)
+        (set-f4 "fogColor" 0.09 0.10 0.14 1.0)
+        (set-f1 "fogDensity" 0.028)
+        (light! 0 1 22.0 26.0 22.0 255 244 220)
+        (light! 1 1 -24.0 -14.0 -18.0 90 150 255)
+        (set-i "lights[2].enabled" 0)
+        (set-i "lights[3].enabled" 0)
+
+        (loop [frame 0 t 0.0 frames 0 acc 0.0 b-acc 0.0 d-acc 0.0
+               hud "measuring..."]
+          (if (or (cpp/WindowShouldClose)
+                  (and (pos? secs) (> t secs)))
+            nil
+            (let [dt (min 0.05 (+ 0.0 (cpp/GetFrameTime)))
+                  t2 (+ t dt)
+                  cam-x (* 46.0 (m-sin (* t2 0.25)))
+                  cam-z (* 46.0 (m-cos (* t2 0.25)))
+                  b0 (+ 0.0 (cpp/GetTime))
+                  _ (when spin? (fill-transforms! transforms places (* t2 0.5)))
+                  b1 (+ 0.0 (cpp/GetTime))]
+              (set-f3 "viewPos" cam-x 12.0 cam-z)
+              (cpp/BeginDrawing)
+              (cpp/ClearBackground (cpp/GetColor (cpp/uint32_t 0x171A24FF)))
+              (cpp/BeginMode3D
+               (cpp/Camera3D (cpp/Vector3 (cpp/float cam-x) (cpp/float 12.0) (cpp/float cam-z))
+                             (cpp/Vector3 (cpp/float 0.0) (cpp/float 0.0) (cpp/float 0.0))
+                             (cpp/Vector3 (cpp/float 0.0) (cpp/float 1.0) (cpp/float 0.0))
+                             (cpp/float 45.0)
+                             cpp/CAMERA_PERSPECTIVE))
+              (let [d0 (+ 0.0 (cpp/GetTime))
+                    _ (cpp/DrawMeshInstanced cube mat
+                                             (cpp/unsafe-cast (:* cpp/Matrix)
+                                                              (cpp/unbox (:* float) transforms))
+                                             (cpp/int n))
+                    d1 (+ 0.0 (cpp/GetTime))]
+                (cpp/EndMode3D)
+                (let [frames2 (inc frames)
+                      acc2 (+ acc dt)
+                      b-acc2 (+ b-acc (* 1000.0 (- b1 b0)))
+                      d-acc2 (+ d-acc (* 1000.0 (- d1 d0)))
+                      refresh? (>= acc2 0.4)
+                      hud2 (if refresh?
+                             (hud-line (/ frames2 acc2) (/ b-acc2 frames2)
+                                       (/ d-acc2 frames2) n spin?)
+                             hud)]
+                  (when refresh? (println hud2))
+                  (text! "raylib [shaders] example - mesh instancing" 16 14 20 0xF5F5F5FF)
+                  (text! (str n " lit cubes in one draw call") 16 40 14 0xA5B4D2FF)
+                  (text! hud2 16 (- H 30) 16 0xA5B4D2FF)
+                  (when (and (some? shot-path) (= frame at))
+                    (cpp/rlDrawRenderBatchActive)
+                    (cpp/TakeScreenshot shot-path))
+                  (cpp/EndDrawing)
+                  (recur (inc frame) t2
+                         (if refresh? 0 frames2) (if refresh? 0.0 acc2)
+                         (if refresh? 0.0 b-acc2) (if refresh? 0.0 d-acc2)
+                         hud2))))))))
+    (cpp/CloseWindow)))
