@@ -6,11 +6,12 @@
 ;;   bb site:serve     build, then serve at localhost:3000
 ;;   bb site:clean     delete the build output
 ;;
-;; NOTHING PUBLISHES. This repo is private, and no site repo, GitHub Pages
-;; setting or S3 target is wired up for it. `bb site:build` writes to a local
-;; directory that is gitignored, and that is the whole pipeline today. When
-;; the repo goes public, the publish half gets added deliberately, as its own
-;; change, the way the sibling raylib-pacman has it.
+;; This site IS published, as of 2026-09-21, at
+;; https://b12n-oss.github.io/lisp-games/. The deploy runs from
+;; .github/workflows/site.yml and is gated on the PUBLISH_SITE repository
+;; variable, so unsetting that variable stops serving without editing
+;; anything. `bb site:build` still writes to a gitignored local directory;
+;; CI builds its own copy and never uses this checkout.
 {;; :base-path is what makes this a project site rather than an org one. If it
  ;; is ever served at https://b12n-oss.github.io/lisp-games/, every URL the
  ;; engine emits needs that prefix. Leave it out and the pages still render,

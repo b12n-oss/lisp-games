@@ -35,6 +35,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   frame. babashka at 10000 instances: `static` 115 fps with 0.0 ms build,
   `spin` 20 fps with 50.5 ms build, while `draw` stays at 0.4 ms in both
   because one draw call is one draw call.
+- **Public, 2026-09-21.** Repository visibility flipped, then GitHub Pages
+  enabled as its own separate decision, then `PUBLISH_SITE` set and the
+  workflow's `push`/`pull_request` triggers restored by hand. The site serves
+  at <https://b12n-oss.github.io/lisp-games/>. Both gates stay in the workflow,
+  so unsetting the variable stops deploying without editing anything.
 - Open-source preparation: `docs/guide/architecture.md` and
   `contributing.md` complete the guide, and `.github/workflows/site.yml`
   builds the site on `workflow_dispatch` only, because a private repo is

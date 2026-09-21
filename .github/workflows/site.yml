@@ -7,19 +7,18 @@ name: Site
 # The engine is pinned to a tag rather than tracking its main branch, so a
 # change over there cannot break these docs without someone choosing it.
 #
-# PUBLISHING IS OFF. The deploy job is gated on the PUBLISH_SITE repository
-# variable, which does not exist, AND on GitHub Pages being enabled on this
-# repo, which it is not. Both must change before anything is served anywhere.
-# The repo being public does not imply either: enabling Pages is its own
-# decision, made deliberately, not a consequence of the source being readable.
+# PUBLISHING IS ON, as of 2026-09-21. Both gates below were cleared
+# deliberately and separately: the PUBLISH_SITE repository variable is set,
+# and GitHub Pages is enabled with build_type=workflow. Turning either off
+# stops the deploy without touching the build.
 #
-# So what runs below is the build and its checks. Nothing leaves the runner.
+# The two gates stay in the file rather than being removed. Flipping the
+# variable is how you stop serving without editing a workflow.
 
-# PRIVATE REPO, SO THE TRIGGER IS MANUAL ONLY. Every Actions run on a
-# private repo is billed, and the local `bb site:build` already proves the
-# same thing for free. `push` and `pull_request` get restored by hand when
-# this repo goes public, as their own deliberate edit.
 on:
+  push:
+    branches: [main]
+  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -111,9 +110,9 @@ jobs:
           path: _site
 
   deploy:
-    # Publishing is off until BOTH of these are true: the PUBLISH_SITE
-    # repository variable is set to "true", and GitHub Pages is enabled on this
-    # repo. Neither is the case today, on purpose.
+    # Both conditions this waits on are true as of 2026-09-21: PUBLISH_SITE is
+    # set, and Pages is enabled. The guard stays so that unsetting the variable
+    # is enough to stop deploying.
     if: github.ref == 'refs/heads/main' && vars.PUBLISH_SITE == 'true'
     needs: build
     runs-on: ubuntu-latest
