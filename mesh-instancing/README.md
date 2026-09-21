@@ -23,7 +23,7 @@ which is what the header of each source file is for. Notices in full are in
 | Runtime | Directory | Binding | Status |
 |---|---|---|---|
 | babashka | [`mesh-instancing-babashka/`](mesh-instancing-babashka) | `babashka.ffi` | runs |
-| jolt | `mesh-instancing-jolt/` | `net.b12n/raylib`, `jolt.ffi` | not written yet |
+| jolt | [`mesh-instancing-jolt/`](mesh-instancing-jolt) | `net.b12n/raylib`, `jolt.ffi` | runs |
 | Clojure on the JVM | `mesh-instancing-clojure/` | raylib-clj, coffi over Panama | not written yet |
 | jank | `mesh-instancing-jank/` | `cpp/` interop | not written yet |
 
@@ -50,13 +50,16 @@ fps and a `spin` fps are not the same measurement.
 
 ## What it costs
 
-On an M1 Pro. One port so far.
+On an M1 Pro. Two ports so far.
 
 | Mode | Instances | | build | draw | fps |
 |---|---|---|---|---|---|
-| static | 10000 | babashka | 0.0 ms | 0.4 ms | 115 |
-| spin | 10000 | babashka | 50.5 ms | 0.4 ms | 20 |
-| spin | 2000 | babashka | 9.9 ms | 0.3 ms | 87 |
+| static | 10000 | jolt | 0.0 ms | 0.5 ms | 113 |
+| | 10000 | babashka | 0.0 ms | 0.4 ms | 115 |
+| spin | 10000 | jolt | 27.2 ms | 0.3 ms | 33 |
+| | 10000 | babashka | 50.5 ms | 0.4 ms | 20 |
+| spin | 2000 | jolt | 5.5 ms | 0.2 ms | 115 |
+| | 2000 | babashka | 9.9 ms | 0.3 ms | 87 |
 
 ## Why this one is a good second game
 

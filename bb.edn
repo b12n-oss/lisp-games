@@ -39,7 +39,12 @@
         :game "mesh-instancing" :dir "mesh-instancing-babashka"
         :runtime "babashka" :binding "babashka.ffi"
         :cmd ["bb" "mesh"]
-        :desc "raylib's own instancing example. Mesh (120 bytes) and Material (40) both cross by value in one call, alongside a matrix array in foreign memory."}])
+        :desc "raylib's own instancing example. Mesh (120 bytes) and Material (40) both cross by value in one call, alongside a matrix array in foreign memory."}
+       {:id "mesh-instancing/jolt"
+        :game "mesh-instancing" :dir "mesh-instancing-jolt"
+        :runtime "jolt" :binding "net.b12n/raylib (jolt.ffi)"
+        :cmd ["bb" "mesh"]
+        :desc "the same, over the raylib-jlt wrapper, which already carries the struct-by-value work."}])
 
     (defn port-path [{:keys [game dir]}] (fs/file game dir))
 

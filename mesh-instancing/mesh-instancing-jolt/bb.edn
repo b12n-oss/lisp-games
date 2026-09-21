@@ -1,0 +1,36 @@
+{:tasks
+ {:requires ([babashka.process :as p])
+
+  info {:doc "Every task in this example, grouped"
+        :task (do (println)
+                  (println "  lisp-games / mesh-instancing / mesh-instancing-jolt")
+                  (println "  raylib called from jolt over net.b12n/raylib on jolt.ffi")
+                  (println)
+                  (println "  bb mesh                        run it, window stays open")
+                  (println "  bb mesh 10                     quit after 10 seconds")
+                  (println "  bb mesh 5 out.png 40 2000 spin 2000 cubes, rebuilt per frame")
+                  (println "  bb shot                        5 seconds, write mesh.png")
+                  (println "  bb bench [n]                   spin mode, the CPU comparison")
+                  (println "  bb check                       compile the namespace, no window")
+                  (println "  bb doctor                      check jolt and libraylib")
+                  (println))}
+
+  mesh {:doc "Ten thousand lit cubes in one draw call"
+        :task (apply p/shell "jolt" "-M:mesh" *command-line-args*)}
+
+  shot {:doc "Run for 5 seconds and write mesh.png on frame 40"
+        :task (p/shell "jolt" "-M:mesh" "5" "mesh.png" "40")}
+
+  bench {:doc "spin mode, which is the number worth comparing (bb bench [n])"
+         :task (p/shell "jolt" "-M:mesh" "6" "" "99999"
+                        (or (first *command-line-args*) "10000") "spin")}
+
+  check {:doc "Compile the namespace without opening a window"
+         :task (do (p/shell "jolt" "-e" "(require (quote lisp-games.mesh-instancing))")
+                   (println "OK  lisp-games.mesh-instancing compiled"))}
+
+  doctor {:doc "Check jolt and libraylib"
+          :task (do (p/shell {:continue true} "sh" "-c"
+                             "printf 'jolt       '; jolt --version 2>/dev/null || echo 'NOT FOUND'")
+                    (p/shell {:continue true} "sh" "-c"
+                             "printf 'libraylib  '; ls /opt/homebrew/lib/libraylib.dylib 2>/dev/null || ldconfig -p 2>/dev/null | grep -m1 libraylib || echo 'NOT FOUND - brew install raylib'"))}}}
