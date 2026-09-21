@@ -35,6 +35,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   frame. babashka at 10000 instances: `static` 115 fps with 0.0 ms build,
   `spin` 20 fps with 50.5 ms build, while `draw` stays at 0.4 ms in both
   because one draw call is one draw call.
+- Open-source preparation: `docs/guide/architecture.md` and
+  `contributing.md` complete the guide, and `.github/workflows/site.yml`
+  builds the site on `workflow_dispatch` only, because a private repo is
+  billed for every Actions run. Its deploy job stays double-gated on the
+  `PUBLISH_SITE` variable and on Pages being enabled, neither of which is.
+- `docs/audit/pre-publish-audit.md`, recording all six leak checks against
+  the working tree and full history. No blockers: no private repo names, no
+  home paths, no secret patterns, no planning-store paths, no unpushed
+  branches, and the agent-instruction files were never tracked on any ref.
 - A documentation site, built from `docs/guide/` by
   [docs-engine](https://github.com/jlt-commons/docs-engine) the way the sibling
   raylib-pacman does it. `bb site:build`, `bb site:serve`, `bb site:clean`.

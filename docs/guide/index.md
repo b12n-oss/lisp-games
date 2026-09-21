@@ -17,6 +17,8 @@ a couple of minutes.
 | [helitorus.md](helitorus.md) | A helix around a torus. Arithmetic over primitive buffers. |
 | [mesh-instancing.md](mesh-instancing.md) | Ten thousand cubes in one draw call. Marshalling into foreign memory. |
 | [runtimes.md](runtimes.md) | One section per runtime: how it reaches C, and what it will not carry. |
+| [architecture.md](architecture.md) | Eight standalone projects, one registry, and why nothing is shared. |
+| [contributing.md](contributing.md) | The gate, the credit rule, and what a measurement has to state. |
 | [credit.md](credit.md) | Whose work each game is, and the rule this repo starts with. |
 
 ## The short version
