@@ -8,6 +8,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- `mesh-instancing`, raylib's own shaders example: ten thousand lit cubes in a
+  single draw call. The babashka port runs. This one leans on struct-by-value
+  hard, since a `Mesh` is 120 bytes returned by value, a `Material` is 40, and
+  `DrawMeshInstanced` takes both plus a pointer to the matrix array. Every
+  layout size was checked against a C program built with the same header.
+- **mesh-instancing ships two modes, and only `spin` is a benchmark.** raylib
+  builds its matrices once and orbits the camera, so per frame the CPU does
+  nothing and the number measures a GPU. `spin` rebuilds every matrix every
+  frame. babashka at 10000 instances: `static` 115 fps with 0.0 ms build,
+  `spin` 20 fps with 50.5 ms build, while `draw` stays at 0.4 ms in both
+  because one draw call is one draw call.
 - The repository, laid out as one directory per game and one per runtime
   inside it (`<game>/<game>-<runtime>/`), so a game can gain runtimes and the
   repo can gain games without either disturbing the other.

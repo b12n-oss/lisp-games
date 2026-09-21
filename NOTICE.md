@@ -59,6 +59,48 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
+## mesh-instancing
+
+From `examples/shaders/shaders_mesh_instancing.c` in
+[raylib](https://github.com/raysan5/raylib/blob/master/examples/shaders/shaders_mesh_instancing.c),
+by **Ramon Santamaria** ([@raysan5](https://github.com/raysan5)) and
+contributors. Unlike helitorus, this one is raylib's own example rather than
+anyone's port of anything: it is not in babashka/ffi, and the lineage stops
+here.
+
+The instancing idea, the shader structure and the ten thousand cubes come from
+that original. The lighting and fog shaders here follow the jolt port in
+[jlt-commons/raylib-jlt](https://github.com/jlt-commons/raylib-jlt), which is
+itself a port of the same C example.
+
+What the ports here added is a second mode. raylib builds its matrices once and
+orbits the camera, which measures a GPU; `spin` rebuilds every matrix every
+frame, which measures the runtime. Say which mode a number came from.
+
+raylib's examples are zlib/libpng licensed, and zlib asks two things that
+survive being ported: that the origin is not misrepresented, and that altered
+versions are plainly marked. The header of each source file is that marking and
+has to stay accurate.
+
+```
+Copyright (c) 2013-2026 Ramon Santamaria (@raysan5)
+
+This software is provided "as-is", without any express or implied warranty. In no event
+will the authors be held liable for any damages arising from the use of this software.
+
+Permission is granted to anyone to use this software for any purpose, including commercial
+applications, and to alter it and redistribute it freely, subject to the following restrictions:
+
+  1. The origin of this software must not be misrepresented; you must not claim that you
+  wrote the original software. If you use this software in a product, an acknowledgment
+  in the product documentation would be appreciated but is not required.
+
+  2. Altered source versions must be plainly marked as such, and must not be misrepresented
+  as being the original software.
+
+  3. This notice may not be removed or altered from any source distribution.
+```
+
 ## raylib
 
 Every port links against [raylib](https://www.raylib.com), which is zlib/libpng

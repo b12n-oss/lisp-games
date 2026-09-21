@@ -34,7 +34,12 @@
         ;; `bb helitorus` here is the -O0 lein build and is NOT the number to
         ;; quote. `bb run-release` uses the -O3 binary, which is 11x faster.
         :cmd ["bb" "run-release"]
-        :desc "raylib over jank's cpp/ interop, including raylib.h directly. No primitive arrays in jank, so the buffers are malloc'd natives carried as boxes."}])
+        :desc "raylib over jank's cpp/ interop, including raylib.h directly. No primitive arrays in jank, so the buffers are malloc'd natives carried as boxes."}
+       {:id "mesh-instancing/babashka"
+        :game "mesh-instancing" :dir "mesh-instancing-babashka"
+        :runtime "babashka" :binding "babashka.ffi"
+        :cmd ["bb" "mesh"]
+        :desc "raylib's own instancing example. Mesh (120 bytes) and Material (40) both cross by value in one call, alongside a matrix array in foreign memory."}])
 
     (defn port-path [{:keys [game dir]}] (fs/file game dir))
 

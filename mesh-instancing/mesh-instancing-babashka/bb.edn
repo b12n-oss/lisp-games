@@ -1,0 +1,47 @@
+{:paths ["src"]
+
+ :tasks
+ {info {:doc "Every task in this example, grouped"
+        :task (do (println)
+                  (println "  lisp-games / mesh-instancing / mesh-instancing-babashka")
+                  (println "  raylib called from babashka over babashka.ffi")
+                  (println)
+                  (println "  bb mesh                        run it, window stays open")
+                  (println "  bb mesh 10                     quit after 10 seconds")
+                  (println "  bb mesh 5 out.png 40           quit after 5, shot frame 40")
+                  (println "  bb mesh 5 out.png 40 2000      the same, 2000 instances")
+                  (println "  bb mesh 5 out.png 40 2000 spin rebuild every matrix per frame")
+                  (println "  bb shot                        5 seconds, write mesh.png")
+                  (println "  bb bench                       spin mode, the CPU comparison")
+                  (println "  bb check                       load the namespace, no window")
+                  (println "  bb doctor                      check bb, libraylib and the FFI path")
+                  (println)
+                  (println "  static is raylib's own shape and measures your GPU.")
+                  (println "  spin rebuilds all the matrices each frame, which is")
+                  (println "  what actually separates one runtime from another.")
+                  (println))}
+
+  mesh {:doc "Ten thousand lit cubes in one draw call"
+        :requires ([lisp-games.mesh-instancing :as m])
+        :task (apply m/-main *command-line-args*)}
+
+  shot {:doc "Run for 5 seconds and write mesh.png on frame 40"
+        :requires ([lisp-games.mesh-instancing :as m])
+        :task (m/-main "5" "mesh.png" "40")}
+
+  bench {:doc "spin mode, which is the number worth comparing (bb bench [n])"
+         :requires ([lisp-games.mesh-instancing :as m])
+         :task (m/-main "6" nil "99999"
+                        (or (first *command-line-args*) "10000") "spin")}
+
+  check {:doc "Load every namespace without opening a window"
+         :task (do (require (quote lisp-games.mesh-instancing))
+                   (println "OK  lisp-games.mesh-instancing loaded, libraylib resolved"))}
+
+  doctor {:doc "Check bb, libraylib and the FFI path"
+          :requires ([babashka.ffi :as ffi])
+          :task (do (println "bb        " (System/getProperty "babashka.version"))
+                    (println "libraylib " (str (:path (ffi/load-system-library "raylib"))))
+                    (println)
+                    (println "If libraylib is missing: brew install raylib (macOS)")
+                    (println "or install your distro's raylib 6.0+ package."))}}}

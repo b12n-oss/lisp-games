@@ -14,11 +14,20 @@ and every port lands with its credit in the same commit. Who wrote what is in
 | Game | Original | Ports |
 |---|---|---|
 | [`helitorus/`](helitorus) | [Michiel Borkent](https://github.com/borkdude), [babashka/ffi](https://github.com/babashka/ffi/blob/main/examples/helitorus.clj) | babashka, jolt, Clojure, jank |
+| [`mesh-instancing/`](mesh-instancing) | [Ramon Santamaria](https://github.com/raysan5), [raylib](https://github.com/raysan5/raylib/blob/master/examples/shaders/shaders_mesh_instancing.c) | babashka |
 
 | | |
 |---|---|
 | **babashka** <br> ![babashka](docs/demos/helitorus-babashka.png) | **jolt** <br> ![jolt](docs/demos/helitorus-jolt.png) |
 | **Clojure/JVM** <br> ![clojure](docs/demos/helitorus-clojure.png) | **jank** <br> ![jank](docs/demos/helitorus-jank.png) |
+
+![mesh instancing](docs/demos/mesh-instancing-babashka.png)
+
+Two games, and they measure different things. helitorus puts everything in
+arithmetic over primitive buffers. mesh-instancing puts it in marshalling: one
+draw call carrying two structs by value and a block of foreign memory. Its
+`spin` mode is the one to compare runtimes with, since the faithful `static`
+mode measures your GPU. See [mesh-instancing/README.md](mesh-instancing/README.md).
 
 ## Layout
 
