@@ -1,0 +1,66 @@
+;; screen-grab manifest for every port in this repo.
+;;
+;; screen-grab and cgevent are INTERNAL b12n tools and are NOT public yet, so
+;; there is nothing to link to and `bb record` only runs on a machine that has
+;; them. That is fine for everyone else: every GIF this manifest produces is
+;; committed under docs/demos/, so the docs build and both README galleries
+;; work with no capture toolchain at all. This file documents how the previews
+;; were made, and makes them reproducible for whoever can.
+;;
+;; Regenerate with `bb record`. Iterate on one item with
+;; `bb record --only helitorus-jank`.
+;;
+;; The item list comes from `bb demos:examples`, which reads the same `ports`
+;; registry in bb.edn that `bb ports`, `bb play` and every sweep walk. Do not
+;; restate the items here: a second list drifts.
+
+{:driver  :spawn
+ :capture :cgevent-gif
+
+ :examples-cmd "bb demos:examples"
+
+ :out-dir  "docs/demos"
+ :ledger   "docs/demos/ledger.edn"
+ :readme   "docs/demos/README.md"
+ :title    "Demos"
+ :preamble "One animated preview per port: two games across four runtimes. Every GIF here is committed, so nothing in this repo needs a capture toolchain to build. They were recorded with `screen-grab` over `cgevent`, internal b12n tools that are not public yet; `bb record` regenerates them on a machine that has both."
+
+ :groups [{:key "helitorus" :title "helitorus"}
+          {:key "mesh-instancing" :title "mesh-instancing"}]
+
+ ;; The two jank items run their AOT binaries rather than `lein run`: lein
+ ;; starts the binary as a child, so the spawned pid would own no window, and
+ ;; the :base profile builds at -O0 which is not what anyone should be shown.
+ ;; Building them is a prerequisite rather than something this manifest can
+ ;; do, so it is declared here and reported with its fix instead of failing as
+ ;; a mystery timeout.
+ :preflight [{:file "helitorus/helitorus-jank/target/release/helitorus-jank"
+              :fix "cd helitorus/helitorus-jank && bb release"}
+             {:file "mesh-instancing/mesh-instancing-jank/target/release/mesh-instancing-jank"
+              :fix "cd mesh-instancing/mesh-instancing-jank && bb release"}]
+
+ ;; :ready-probe waits for a real rendered frame rather than for the window to
+ ;; exist, which is the difference between capturing a game and capturing a
+ ;; blank window that has not drawn yet. The generous :warmup covers JVM start
+ ;; on the two Clojure items.
+ ;;
+ ;; NO :input anywhere. Unlike Pac-Man in the sibling repo, both games here
+ ;; animate on their own: helitorus keeps the spin it is released with and
+ ;; decays it to an idle turn, and mesh-instancing orbits its camera. There is
+ ;; nothing to steer, so there is no synthetic input to be best-effort about.
+ :defaults {:duration 8
+            :fps 12
+            :width 480
+            :warmup 120
+            :ready-probe true}
+
+ ;; mesh-instancing is ten thousand small cubes, which is high-entropy content
+ ;; that neither gifski nor a gifsicle pass can compress: measured at 4.0 MB
+ ;; per item at the defaults, against 0.5 MB for helitorus. Since the page
+ ;; shows four of them at once, these are shorter and narrower. The camera
+ ;; orbits slowly enough that five seconds still reads as motion.
+ :overrides
+ {"mesh-instancing-babashka" {:duration 5 :width 400}
+  "mesh-instancing-jolt"     {:duration 5 :width 400}
+  "mesh-instancing-clojure"  {:duration 5 :width 400}
+  "mesh-instancing-jank"     {:duration 5 :width 400}}}

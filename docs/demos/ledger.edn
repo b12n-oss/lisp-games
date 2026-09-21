@@ -1,0 +1,10 @@
+{
+  "helitorus-babashka" {:sha "04e7a9029c5d7881494999461e897cb7cfd2ea8b0e1b942fb7f386296a4f485c", :settings [8 12 480 "gif"], :bytes 490123, :at "2026-09-21T10:24:43.367022Z"}
+  "helitorus-clojure" {:sha "986b1d597d54a99f971a14a1364e8a2288213a5dd313f50c2d9a0b9b4a4425fa", :settings [8 12 480 "gif"], :bytes 457262, :at "2026-09-21T10:26:32.744404Z"}
+  "helitorus-jank" {:sha "18b45e5a1572dfbdbfe2475b5c7ac480e235620cee772fd3f50eca682a8747ee", :settings [8 12 480 "gif"], :bytes 474154, :at "2026-09-21T10:26:32.744407Z"}
+  "helitorus-jolt" {:sha "9fe4774d74c986366393a99e5a850ddcd0fecc60e32aa1ec8fac7af27cfbbb52", :settings [8 12 480 "gif"], :bytes 496685, :at "2026-09-21T10:26:32.744362Z"}
+  "mesh-instancing-babashka" {:sha "d848190462aeba4703b35476654e8a457ce2e4005c286a11bff0686cd61ec8d2", :settings [5 12 400 "gif"], :bytes 2005924, :at "2026-09-21T10:28:19.861070Z"}
+  "mesh-instancing-clojure" {:sha "4bfe0c2e67a7a45c3bb46cc62948f2ab4ea3ddce3318e260fca8a3069b8522f2", :settings [5 12 400 "gif"], :bytes 1990177, :at "2026-09-21T10:28:19.861267Z"}
+  "mesh-instancing-jank" {:sha "76070a4aaa9d154b57f420d16dae3766fe4880d3daf1dda5f1b183c11fee5916", :settings [5 12 400 "gif"], :bytes 1968754, :at "2026-09-21T10:28:19.861269Z"}
+  "mesh-instancing-jolt" {:sha "35ee91d95674666125b20892726fa5683c0e1ea389ecc0808b0948d5ede5b71e", :settings [5 12 400 "gif"], :bytes 1962394, :at "2026-09-21T10:27:43.299968Z"}
+}

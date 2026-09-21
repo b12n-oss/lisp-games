@@ -35,6 +35,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   frame. babashka at 10000 instances: `static` 115 fps with 0.0 ms build,
   `spin` 20 fps with 50.5 ms build, while `draw` stays at 0.4 ms in both
   because one draw call is one draw call.
+- A documentation site, built from `docs/guide/` by
+  [docs-engine](https://github.com/jlt-commons/docs-engine) the way the sibling
+  raylib-pacman does it. `bb site:build`, `bb site:serve`, `bb site:clean`.
+  Seven pages; `reading-the-numbers.md` is the one that matters, since it
+  collects every way a measurement here has already been wrong.
+  **Nothing publishes.** No site repo, no Pages, and `docs/site.edn` says so.
+- An animated preview per port under `docs/demos/`, eight in all, recorded
+  with the internal `screen-grab` over `cgevent` and committed, so neither the
+  docs build nor either README gallery needs a capture toolchain. `bb record`
+  regenerates them from `scripts/demo_manifest.edn`, which reads the same
+  registry every other task walks. The stills they replace are gone.
 - The repository, laid out as one directory per game and one per runtime
   inside it (`<game>/<game>-<runtime>/`), so a game can gain runtimes and the
   repo can gain games without either disturbing the other.

@@ -2,8 +2,6 @@
 
 A helix of n windings around a torus, swept into a tube, turned by the mouse.
 
-![helitorus in babashka](../docs/demos/helitorus-babashka.png)
-
 ## Credit
 
 The program is **Michiel Borkent**'s ([@borkdude](https://github.com/borkdude)).
@@ -29,8 +27,8 @@ figure to a 2D canvas. babashka/ffi is MIT licensed and the notice is in
 
 | | |
 |---|---|
-| **babashka** <br> ![babashka](../docs/demos/helitorus-babashka.png) | **jolt** <br> ![jolt](../docs/demos/helitorus-jolt.png) |
-| **Clojure/JVM** <br> ![clojure](../docs/demos/helitorus-clojure.png) | **jank** <br> ![jank](../docs/demos/helitorus-jank.png) |
+| **babashka** <br> ![babashka](../docs/demos/helitorus-babashka.gif) | **jolt** <br> ![jolt](../docs/demos/helitorus-jolt.gif) |
+| **Clojure/JVM** <br> ![clojure](../docs/demos/helitorus-clojure.gif) | **jank** <br> ![jank](../docs/demos/helitorus-jank.gif) |
 
 ## What makes this one worth porting
 

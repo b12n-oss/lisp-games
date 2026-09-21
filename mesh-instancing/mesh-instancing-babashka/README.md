@@ -3,7 +3,7 @@
 Ten thousand lit cubes in a single draw call, from
 [babashka](https://babashka.org) over the built-in `babashka.ffi`.
 
-![mesh instancing in babashka](../../docs/demos/mesh-instancing-babashka.png)
+![mesh instancing in babashka](../../docs/demos/mesh-instancing-babashka.gif)
 
 ```sh
 bb info                          # every task here

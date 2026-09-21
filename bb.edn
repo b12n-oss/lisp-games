@@ -14,47 +14,88 @@
     ;; inside it, and :cmd what to run once you are in there.
     (def ports
       [{:id "helitorus/babashka"
-        :game "helitorus" :dir "helitorus-babashka"
+        :game "helitorus" :dir "helitorus-babashka" :runtime-key "babashka"
         :runtime "babashka" :binding "babashka.ffi"
         :cmd ["bb" "helitorus"]
+        :run "bb helitorus" :src "src/lisp_games/helitorus.clj"
         :desc "raylib over the babashka.ffi built into bb. Scalars throughout by choice, and the surface emitted as one rlgl batch per ring."}
        {:id "helitorus/jolt"
-        :game "helitorus" :dir "helitorus-jolt"
+        :game "helitorus" :dir "helitorus-jolt" :runtime-key "jolt"
         :runtime "jolt" :binding "net.b12n/raylib (jolt.ffi)"
         :cmd ["bb" "helitorus"]
+        :run "jolt -M:helitorus" :src "src/lisp_games/helitorus.clj"
         :desc "raylib over net.b12n/raylib on jolt.ffi. Same geometry, typed primitive arrays, about three and a half times the arithmetic throughput."}
        {:id "helitorus/clojure"
-        :game "helitorus" :dir "helitorus-clojure"
+        :game "helitorus" :dir "helitorus-clojure" :runtime-key "clojure"
         :runtime "Clojure/JVM" :binding "raylib-clj (coffi / Panama)"
         :cmd ["bb" "helitorus"]
+        :run "clojure -M:helitorus" :src "src/lisp_games/helitorus.clj"
         :desc "raylib over raylib-clj, which binds it with coffi on Panama. Structs arrive as maps; rlgl is declared in the example itself. Fastest of the four, and the array type hints are what make it so."}
        {:id "helitorus/jank"
-        :game "helitorus" :dir "helitorus-jank"
+        :game "helitorus" :dir "helitorus-jank" :runtime-key "jank"
         :runtime "jank" :binding "cpp/ interop (raylib-sys)"
         ;; `bb helitorus` here is the -O0 lein build and is NOT the number to
         ;; quote. `bb run-release` uses the -O3 binary, which is 11x faster.
         :cmd ["bb" "run-release"]
+        ;; the AOT binary: lein would start it as a child AND run the -O0 build
+        :run "./target/release/helitorus-jank" :src "src/lisp_games/helitorus.jank"
+        :bin "target/release/helitorus-jank" :bin-fix "bb release"
         :desc "raylib over jank's cpp/ interop, including raylib.h directly. No primitive arrays in jank, so the buffers are malloc'd natives carried as boxes."}
        {:id "mesh-instancing/babashka"
-        :game "mesh-instancing" :dir "mesh-instancing-babashka"
+        :game "mesh-instancing" :dir "mesh-instancing-babashka" :runtime-key "babashka"
         :runtime "babashka" :binding "babashka.ffi"
         :cmd ["bb" "mesh"]
+        :run "bb mesh" :src "src/lisp_games/mesh_instancing.clj"
         :desc "raylib's own instancing example. Mesh (120 bytes) and Material (40) both cross by value in one call, alongside a matrix array in foreign memory."}
        {:id "mesh-instancing/jolt"
-        :game "mesh-instancing" :dir "mesh-instancing-jolt"
+        :game "mesh-instancing" :dir "mesh-instancing-jolt" :runtime-key "jolt"
         :runtime "jolt" :binding "net.b12n/raylib (jolt.ffi)"
         :cmd ["bb" "mesh"]
+        :run "jolt -M:mesh" :src "src/lisp_games/mesh_instancing.clj"
         :desc "the same, over the raylib-jlt wrapper, which already carries the struct-by-value work."}
        {:id "mesh-instancing/clojure"
-        :game "mesh-instancing" :dir "mesh-instancing-clojure"
+        :game "mesh-instancing" :dir "mesh-instancing-clojure" :runtime-key "clojure"
         :runtime "Clojure/JVM" :binding "raylib-clj (coffi / Panama)"
         :cmd ["bb" "mesh"]
+        :run "clojure -M:mesh" :src "src/lisp_games/mesh_instancing.clj"
         :desc "the same, declaring seven calls and its own Shader/Material aliases, because raylib-clj's split the pointer and flatten the nesting."}
        {:id "mesh-instancing/jank"
-        :game "mesh-instancing" :dir "mesh-instancing-jank"
+        :game "mesh-instancing" :dir "mesh-instancing-jank" :runtime-key "jank"
         :runtime "jank" :binding "cpp/ interop (raylib-sys)"
         :cmd ["bb" "run-release"]
+        :run "./target/release/mesh-instancing-jank" :src "src/lisp_games/mesh_instancing.jank"
+        :bin "target/release/mesh-instancing-jank" :bin-fix "bb release"
         :desc "the same, and the only port where Mesh and Material cross by value with no ceremony, because jank has the real header."}])
+
+    (def docs-engine-repo "https://github.com/jlt-commons/docs-engine")
+
+    (defn docs-engine-dir
+      "Where the docs-engine checkout lives. It is a separate repo rather than
+       a dependency, so this is a path search, not a coordinate. CI does not
+       use this at all: the workflow checks the engine out itself, pinned to a
+       tag."
+      []
+      (->> [(System/getenv "DOCS_ENGINE")
+            "../docs-engine"
+            (str (System/getProperty "user.home") "/dev/jlt-commons/docs-engine")]
+           (remove nil?)
+           (filter (fn [d] (fs/exists? (fs/file d "bb.edn"))))
+           first))
+
+    (defn site-task
+      [task & args]
+      (if-let [engine (docs-engine-dir)]
+        (let [argv (into ["bb" task (System/getProperty "user.dir")] (remove nil? args))
+              res (apply p/shell {:dir (str engine) :continue true} argv)]
+          (when-not (zero? (:exit res)) (System/exit (:exit res))))
+        (do
+          (println "The docs engine is not checked out anywhere I looked:")
+          (println "  $DOCS_ENGINE, ../docs-engine, ~/dev/jlt-commons/docs-engine")
+          (println)
+          (println "  git clone" docs-engine-repo "../docs-engine")
+          (println)
+          (println "CI does not need this. It checks the engine out itself.")
+          (System/exit 1))))
 
     (defn port-path [{:keys [game dir]}] (fs/file game dir))
 
@@ -99,6 +140,10 @@
              (println "  bb shot-all              run each for 3 seconds, capture a PNG")
              (println "  bb doctor-all            which toolchain is missing where")
              (println)
+             (println "  bb site:build            build the docs site into _site/")
+             (println "  bb site:serve            build, then serve on :3000")
+             (println "  bb site:clean            delete the build output")
+             (println)
              (println "  Each port directory has its own bb.edn with the same tasks.")
              (println "  cd helitorus/helitorus-babashka && bb info")
              (println))}
@@ -134,4 +179,38 @@
 
   doctor-all
   {:doc "Ask every port whether its toolchain is present"
-   :task (sweep! ["bb" "doctor"])}}}
+   :task (sweep! ["bb" "doctor"])}
+
+  ;; --- demo recording (maintainer-only) --------------------------------------
+
+  demos:examples
+  {:doc "Print the port registry as EDN for screen-grab (internal tool)"
+   :task (prn (mapv (fn [pt]
+                      {:id (str (:game pt) "-" (:runtime-key pt))
+                       :group (:game pt)
+                       :desc (:desc pt)
+                       ;; run-port.sh is the shell that :run cannot be, and its
+                       ;; `exec` is what keeps the spawned pid owning the window
+                       :run (str "scripts/run-port.sh " (:game pt) " " (:dir pt)
+                                 " 20 " (:run pt))
+                       ;; the hash that decides whether a re-run re-captures
+                       :src (str (:game pt) "/" (:dir pt) "/" (:src pt))
+                       :target nil})
+                    ports))}
+
+  record
+  {:doc "Re-record docs/demos/*.gif (maintainer-only; needs the internal screen-grab)"
+   :task (apply p/shell "screen-grab" "record"
+                "--manifest" "scripts/demo_manifest.edn"
+                *command-line-args*)}
+
+  ;; --- the docs site ---------------------------------------------------------
+
+  site:build {:doc "Build the documentation site into _site/ (needs a docs-engine checkout)"
+              :task (site-task "build")}
+
+  site:serve {:doc "Build the docs site and serve it locally (bb site:serve [port], default 3000)"
+              :task (site-task "serve" (first *command-line-args*))}
+
+  site:clean {:doc "Delete the _site/ build output"
+              :task (site-task "clean")}}}

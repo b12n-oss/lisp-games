@@ -1,0 +1,25 @@
+;; Configuration for the documentation site, read by the docs-engine
+;; (https://github.com/jlt-commons/docs-engine).
+;;
+;; Build or preview it from this repo:
+;;   bb site:build     generate _site/
+;;   bb site:serve     build, then serve at localhost:3000
+;;   bb site:clean     delete the build output
+;;
+;; NOTHING PUBLISHES. This repo is private, and no site repo, GitHub Pages
+;; setting or S3 target is wired up for it. `bb site:build` writes to a local
+;; directory that is gitignored, and that is the whole pipeline today. When
+;; the repo goes public, the publish half gets added deliberately, as its own
+;; change, the way the sibling raylib-pacman has it.
+{;; :base-path is what makes this a project site rather than an org one. If it
+ ;; is ever served at https://b12n-oss.github.io/lisp-games/, every URL the
+ ;; engine emits needs that prefix. Leave it out and the pages still render,
+ ;; but each one loads the ORGANIZATION site's stylesheet and every asset
+ ;; 404s.
+ :base-path   "/lisp-games"
+
+ :title       "lisp-games"
+ :description "Small graphical programs, each ported to more than one Clojure-family runtime, kept side by side so the differences are measurable rather than arguable."
+
+ ;; The stills the guide pages link to.
+ :asset-dirs  ["demos"]}

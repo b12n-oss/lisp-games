@@ -18,10 +18,13 @@ and every port lands with its credit in the same commit. Who wrote what is in
 
 | | |
 |---|---|
-| **babashka** <br> ![babashka](docs/demos/helitorus-babashka.png) | **jolt** <br> ![jolt](docs/demos/helitorus-jolt.png) |
-| **Clojure/JVM** <br> ![clojure](docs/demos/helitorus-clojure.png) | **jank** <br> ![jank](docs/demos/helitorus-jank.png) |
+| **babashka** <br> ![babashka](docs/demos/helitorus-babashka.gif) | **jolt** <br> ![jolt](docs/demos/helitorus-jolt.gif) |
+| **Clojure/JVM** <br> ![clojure](docs/demos/helitorus-clojure.gif) | **jank** <br> ![jank](docs/demos/helitorus-jank.gif) |
 
-![mesh instancing](docs/demos/mesh-instancing-babashka.png)
+| | |
+|---|---|
+| **babashka** <br> ![babashka](docs/demos/mesh-instancing-babashka.gif) | **jolt** <br> ![jolt](docs/demos/mesh-instancing-jolt.gif) |
+| **Clojure/JVM** <br> ![clojure](docs/demos/mesh-instancing-clojure.gif) | **jank** <br> ![jank](docs/demos/mesh-instancing-jank.gif) |
 
 Two games, and they measure different things. helitorus puts everything in
 arithmetic over primitive buffers. mesh-instancing puts it in marshalling: one

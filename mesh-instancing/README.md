@@ -2,7 +2,10 @@
 
 Ten thousand lit cubes in a single draw call.
 
-![mesh instancing](../docs/demos/mesh-instancing-babashka.png)
+| | |
+|---|---|
+| **babashka** <br> ![babashka](../docs/demos/mesh-instancing-babashka.gif) | **jolt** <br> ![jolt](../docs/demos/mesh-instancing-jolt.gif) |
+| **Clojure/JVM** <br> ![clojure](../docs/demos/mesh-instancing-clojure.gif) | **jank** <br> ![jank](../docs/demos/mesh-instancing-jank.gif) |
 
 ## Credit
 
