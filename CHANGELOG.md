@@ -16,6 +16,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - jolt, Clojure and jank ports of mesh-instancing, so both games now cover all
   four runtimes. The `spin` build column at 10000 instances: Clojure 1.9 ms,
   jank 6.5, jolt 27.2, babashka 50.5.
+- **The jank port ships two matrix paths and measures them against each
+  other.** `spin` computes the rotation in jank; `spin-raymath` calls
+  raylib's `MatrixRotate`/`MatrixTranslate`/`MatrixMultiply`. Same binary,
+  same scatter, roughly 3x apart: 6.3-6.8 ms against 1.9-2.5 at 10000
+  instances. Both were checked in C to produce an identical matrix, sixteen
+  slots matching to within 6e-8, so it is an A/B rather than two programs.
+  `bb ab` runs them back to back. Nothing in jank-lang/commons does this
+  arithmetic in jank; `glm-sys` and raymath both do it in C++.
 - **The two games rank the runtimes with very different spreads.** helitorus
   puts its work in arithmetic and the four sit within about 7x of each other.
   mesh-instancing puts its work in writes into foreign memory, and there the

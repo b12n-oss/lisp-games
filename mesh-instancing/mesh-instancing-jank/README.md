@@ -10,7 +10,8 @@ bb mesh                # run via lein, a DEBUG -O0 build
 bb check               # compile the namespace
 ```
 
-Takes `[seconds] [out.png] [frame] [instances] [spin]`.
+Takes `[seconds] [out.png] [frame] [instances] [mode]`, where mode is
+`spin`, `spin-raymath` or omitted for static.
 
 ## Measure the release binary, not `lein run`
 
@@ -46,13 +47,51 @@ not compile, and a float pointer suits this port anyway.
 A jank fn may not RETURN a native value, so the transform pointer travels as a
 `cpp/box` and is unboxed at each use. Same constraint as helitorus.
 
-**The matrices are computed in jank rather than by raymath**, and that is a
-deliberate deviation from raylib-jnk's port, which calls `MatrixRotate` and
-`MatrixMultiply`. Those are the idiomatic choice and the faster one, but they
-would move the arithmetic into C and make the `build` column a measurement of
-C rather than of jank. The other three ports compute the same rotation
-themselves, so this one does too. If you want the fast version, raymath is
-right there.
+## Two matrix paths, measured against each other
+
+This port ships both, because "compute it in jank" and "let C compute it" is
+the one decision that actually matters here and it deserved a number rather
+than an opinion.
+
+```sh
+bb ab            # runs spin then spin-raymath back to back
+bb ab 2000       # at a different instance count
+```
+
+| Instances | | build | draw | fps |
+|---|---|---|---|---|
+| 10000 | `spin` (jank) | 6.3 to 6.8 ms | 0.3 ms | 114 |
+| 10000 | `spin-raymath` (C) | 1.9 to 2.5 ms | 0.3 ms | 116 |
+| 2000 | `spin` (jank) | 1.2 ms | 0.2 ms | 114 |
+| 2000 | `spin-raymath` (C) | 0.4 ms | 0.2 ms | 115 |
+
+Ranges rather than single figures because that is what repeated runs gave.
+Six readings of each at 10000: `spin` 6.3, 6.4, 6.5, 6.8; `spin-raymath` 1.9,
+2.2, 2.4, 2.4, 2.5. The raymath side is the noisier of the two, which is worth
+knowing before reading much into a single run.
+
+**Letting raymath do it is roughly 3x faster.** Same binary, same scatter, same
+everything but the sixteen floats. `spin-raymath` calls `MatrixRotate`,
+`MatrixTranslate` and `MatrixMultiply` and assigns whole 64-byte Matrix values;
+`spin` computes the same rotation in jank and writes floats one at a time.
+
+They really do compute the same matrix. Both were evaluated in C against the
+same axis, angle and translation: sixteen slots identical, worst difference
+6e-8, which is float rounding. So this is an A/B rather than two different
+programs.
+
+Worth noticing where raymath lands: around 2 ms is roughly what the Clojure
+port gets computing in Clojure. At that point neither is doing arithmetic worth
+measuring and both are mostly just moving 640 KB into memory, which is the
+floor this game has.
+
+**Which to use.** For ordinary jank code, raymath, and it is already on the
+include path via raylib-sys so it costs no new dependency. `glm-sys` in
+[jank-lang/commons](https://github.com/jank-lang/commons) is the better option
+for a maths-heavy project, being a real library rather than raylib's
+convenience header. The hand-rolled path exists here so the comparison against
+Clojure, jolt and babashka measures jank rather than C, since those three all
+compute the rotation in-language.
 
 ## Credit
 

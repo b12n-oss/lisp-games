@@ -47,6 +47,14 @@
   shot {:doc "Release binary, 5 game-seconds, write mesh.png at frame 300"
         :task (p/shell (release-or-die) "5" "mesh.png" "300")}
 
+  ab {:doc "Run spin and spin-raymath back to back (bb ab [n])"
+      :task (let [n (or (first *command-line-args*) "10000")
+                  bin (release-or-die)]
+              (doseq [m ["spin" "spin-raymath"]]
+                (println)
+                (println (str "==> " m ", " n " instances"))
+                (p/shell {:continue true} bin "5" "" "99999" n m)))}
+
   check {:doc "Compile the namespace"
          :task (do (p/shell "lein" "jank" "compile" "--disable-sandbox")
                    (println "OK  lisp-games.mesh-instancing compiled"))}

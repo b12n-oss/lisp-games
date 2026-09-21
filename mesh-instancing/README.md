@@ -45,6 +45,12 @@ Read the `draw` column first in any table below. It barely moves between modes
 or instance counts, because one draw call is one draw call. Everything that
 changes is `build`.
 
+The jank port ships a third mode, `spin-raymath`, which computes the same
+matrices with raylib's C helpers instead of in jank. It is about 3x faster
+than the jank-side path and is there to put a number on that choice rather
+than an opinion. Every runtime's `spin` figure below is the in-language one,
+so the comparison stays like-for-like.
+
 **Always say which mode and how many instances a number came from.** A `static`
 fps and a `spin` fps are not the same measurement.
 

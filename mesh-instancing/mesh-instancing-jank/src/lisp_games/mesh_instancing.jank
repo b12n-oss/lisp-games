@@ -37,7 +37,7 @@
   - Mesh and Material cross into DrawMeshInstanced by value with no ceremony,
     because jank has the real header and the C++ compiler knows the types.
     This is the one FFI here that never had to think about it."
-  (:include "raylib.h" "rlgl.h" "math.h"))
+  (:include "raylib.h" "raymath.h" "rlgl.h" "math.h"))
 
 (def ^:const W 800)
 (def ^:const H 450)
@@ -165,6 +165,23 @@ void main()
     (cpp/= (cpp/aget p (cpp/int (+ base 15))) (cpp/float 1.0))
     nil))
 
+(defn matrix-set-raymath!
+  "The same matrix, computed by raymath instead of by jank.
+
+  This exists purely so the two can be measured against each other. The
+  buffer is the same allocation, re-cast to a Matrix pointer so whole 64-byte
+  values can be assigned at once, and MatrixRotate/MatrixTranslate/
+  MatrixMultiply do the arithmetic in C. This is what raylib-jnk's port does
+  and it is the idiomatic choice for ordinary jank code."
+  [box i ax ay az angle tx ty tz]
+  (let [p (cpp/unsafe-cast (:* cpp/Matrix) (cpp/unbox (:* float) box))]
+    (cpp/= (cpp/aget p (cpp/int i))
+           (cpp/MatrixMultiply
+            (cpp/MatrixRotate (cpp/Vector3 (cpp/float ax) (cpp/float ay) (cpp/float az))
+                              (cpp/float angle))
+            (cpp/MatrixTranslate (cpp/float tx) (cpp/float ty) (cpp/float tz))))
+    nil))
+
 (defn scatter
   "One random placement per instance, generated once whatever the mode."
   [n]
@@ -180,13 +197,17 @@ void main()
             (- (rand SPREAD) (/ SPREAD 2.0))]))))
 
 (defn fill-transforms!
-  "Every instance's matrix at time `t`. The whole of spin mode's frame cost."
-  [box places t]
+  "Every instance's matrix at time `t`. The whole of spin mode's frame cost,
+  and the only thing that differs between `spin` and `spin-raymath`."
+  [box places t raymath?]
   (loop [i 0]
     (when (< i (count places))
       (let [pl (nth places i)]
-        (matrix-set! box i (nth pl 0) (nth pl 1) (nth pl 2)
-                     (+ (nth pl 3) t) (nth pl 4) (nth pl 5) (nth pl 6)))
+        (if raymath?
+          (matrix-set-raymath! box i (nth pl 0) (nth pl 1) (nth pl 2)
+                               (+ (nth pl 3) t) (nth pl 4) (nth pl 5) (nth pl 6))
+          (matrix-set! box i (nth pl 0) (nth pl 1) (nth pl 2)
+                       (+ (nth pl 3) t) (nth pl 4) (nth pl 5) (nth pl 6))))
       (recur (inc i)))))
 
 ;; --- the HUD -----------------------------------------------------------------
@@ -194,11 +215,11 @@ void main()
 
 (defn r1 [x] (/ (int (+ 0.5 (* 10.0 x))) 10.0))
 
-(defn hud-line [fps build-ms draw-ms n spin?]
+(defn hud-line [fps build-ms draw-ms n label]
   (str "fps " (int (+ 0.5 fps))
        " | build " (r1 build-ms) " ms"
        " | draw " (r1 draw-ms) " ms"
-       " | " n " cubes | " (if spin? "spin" "static")))
+       " | " n " cubes | " label))
 
 (defn text! [s x y size c]
   (cpp/DrawText s (cpp/int (int x)) (cpp/int (int y)) (cpp/int (int size))
@@ -212,7 +233,9 @@ void main()
 
   lein run --disable-sandbox 5 out.png 40 2000 spin
 
-  takes [seconds] [out.png] [frame] [instances] [spin]. `seconds` counts GAME
+  takes [seconds] [out.png] [frame] [instances] [mode], where mode is
+  `spin` (the matrices computed in jank), `spin-raymath` (the same matrices
+  computed by raymath's C, for comparison) or omitted for static. `seconds` counts GAME
   time summed from clamped dt, not wall time, because `lein run` compiles as it
   loads and would otherwise spend the whole budget on frame 0."
   [& args]
@@ -220,7 +243,9 @@ void main()
         shot-path (second args)
         at (if (nth args 2 nil) (int (cpp/TextToInteger (nth args 2 nil))) 40)
         n (if (nth args 3 nil) (int (cpp/TextToInteger (nth args 3 nil))) 10000)
-        spin? (= "spin" (nth args 4 nil))
+        mode (nth args 4 nil)
+        raymath? (= "spin-raymath" mode)
+        spin? (or raymath? (= "spin" mode))
         places (scatter n)
         transforms (alloc-transforms! n)]
     (cpp/SetConfigFlags cpp/FLAG_MSAA_4X_HINT)
@@ -237,7 +262,7 @@ void main()
       (cpp/= (.-color (cpp/aget (.-maps mat) (cpp/int cpp/MATERIAL_MAP_DIFFUSE)))
              (cpp/Color (cpp/cast cpp/uint8_t 210) (cpp/cast cpp/uint8_t 215)
                         (cpp/cast cpp/uint8_t 235) (cpp/cast cpp/uint8_t 255)))
-      (fill-transforms! transforms places 0.0)
+      (fill-transforms! transforms places 0.0 raymath?)
 
       ;; uniforms. Each write goes through the scratch buffer, since
       ;; SetShaderValue takes a const void*.
@@ -296,7 +321,7 @@ void main()
                   cam-x (* 46.0 (m-sin (* t2 0.25)))
                   cam-z (* 46.0 (m-cos (* t2 0.25)))
                   b0 (+ 0.0 (cpp/GetTime))
-                  _ (when spin? (fill-transforms! transforms places (* t2 0.5)))
+                  _ (when spin? (fill-transforms! transforms places (* t2 0.5) raymath?))
                   b1 (+ 0.0 (cpp/GetTime))]
               (set-f3 "viewPos" cam-x 12.0 cam-z)
               (cpp/BeginDrawing)
@@ -321,7 +346,10 @@ void main()
                       refresh? (>= acc2 0.4)
                       hud2 (if refresh?
                              (hud-line (/ frames2 acc2) (/ b-acc2 frames2)
-                                       (/ d-acc2 frames2) n spin?)
+                                       (/ d-acc2 frames2) n
+                                       (cond raymath? "spin-raymath"
+                                             spin? "spin"
+                                             :else "static"))
                              hud)]
                   (when refresh? (println hud2))
                   (text! "raylib [shaders] example - mesh instancing" 16 14 20 0xF5F5F5FF)
