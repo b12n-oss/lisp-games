@@ -27,7 +27,14 @@
         :game "helitorus" :dir "helitorus-clojure"
         :runtime "Clojure/JVM" :binding "raylib-clj (coffi / Panama)"
         :cmd ["bb" "helitorus"]
-        :desc "raylib over raylib-clj, which binds it with coffi on Panama. Structs arrive as maps; rlgl is declared in the example itself. Fastest of the three, and the array type hints are what make it so."}])
+        :desc "raylib over raylib-clj, which binds it with coffi on Panama. Structs arrive as maps; rlgl is declared in the example itself. Fastest of the four, and the array type hints are what make it so."}
+       {:id "helitorus/jank"
+        :game "helitorus" :dir "helitorus-jank"
+        :runtime "jank" :binding "cpp/ interop (raylib-sys)"
+        ;; `bb helitorus` here is the -O0 lein build and is NOT the number to
+        ;; quote. `bb run-release` uses the -O3 binary, which is 11x faster.
+        :cmd ["bb" "run-release"]
+        :desc "raylib over jank's cpp/ interop, including raylib.h directly. No primitive arrays in jank, so the buffers are malloc'd natives carried as boxes."}])
 
     (defn port-path [{:keys [game dir]}] (fs/file game dir))
 

@@ -32,6 +32,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   with coffi's `defcfn`. It is the fastest of the three: 0.7 ms compute and
   0.3 ms draw at the default resolution, and the only one still holding the
   full frame cap at 900 rings.
+- A jank port of helitorus over its `cpp/` interop. jank has no primitive
+  arrays (`double-array`, `int-array` and `aget` all throw `TODO: port ...`,
+  checked against upstream on 2026-09-20), so the ten buffers are malloc'd
+  natives carried as `cpp/box` values and unboxed at each use site. A native
+  pointer cannot be a jank fn parameter, which is the same constraint the
+  Pac-Man port meets from the other side.
+- **Measure jank's release binary, not `lein run`.** The `:base` profile
+  compiles at `-O0`: 14.0 ms compute per frame against 1.2 at `-O3`, eleven
+  times. The `-O0` figure would rank jank last of the four when it is second.
+  `bb shot` and `bb run-release` both use the binary.
 - **The array type hints in the Clojure port are load-bearing.** Without
   `^"[D"` / `^"[I"` every `aget` resolves through `clojure.lang.RT`
   reflectively, which measured 21 ms compute and 78 ms draw, thirty times

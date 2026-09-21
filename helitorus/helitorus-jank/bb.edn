@@ -1,0 +1,63 @@
+{:tasks
+ {:requires ([babashka.fs :as fs]
+             [babashka.process :as p])
+
+  ;; Every lein invocation needs --disable-sandbox: macOS has no bwrap and the
+  ;; native build aborts without it with "No 'bwrap' executable found", which
+  ;; is not a jank error and does not mention jank at all.
+  :init (do
+          (def lein-args ["--disable-sandbox"])
+          (def release-bin "target/release/helitorus-jank")
+          (defn release-or-die []
+            (when-not (fs/exists? release-bin)
+              (println "No release binary yet. Build it with:")
+              (println "  bb release")
+              (System/exit 1))
+            release-bin))
+
+  info {:doc "Every task in this example, grouped"
+        :task (do (println)
+                  (println "  lisp-games / helitorus / helitorus-jank")
+                  (println "  raylib called from jank over its cpp/ interop")
+                  (println)
+                  (println "  bb helitorus        run it via lein (DEBUG, -O0)")
+                  (println "  bb release          build the -O3 binary")
+                  (println "  bb run-release      run that binary, which is the honest one")
+                  (println "  bb shot             release binary, 5s, write helitorus.png")
+                  (println "  bb check            compile the namespace")
+                  (println "  bb clean            drop the native build cache")
+                  (println "  bb doctor           check jank, lein and libraylib")
+                  (println)
+                  (println "  MEASURE THE RELEASE BINARY, NOT `lein run`. The :base")
+                  (println "  profile compiles at -O0 and this program is arithmetic:")
+                  (println "  14.0 ms compute per frame at -O0 against 1.2 at -O3.")
+                  (println "  First run compiles raylib-sys natively, a few minutes.")
+                  (println))}
+
+  helitorus {:doc "Run via lein (DEBUG build, -O0: slow, not the number to quote)"
+             :task (apply p/shell "lein" "run" (concat lein-args *command-line-args*))}
+
+  release {:doc "Build the -O3 binary into target/release/"
+           :task (do (p/shell "lein" "with-profile" "release" "jank" "compile" "--disable-sandbox")
+                     (println "OK  target/release/helitorus-jank"))}
+
+  run-release {:doc "Run the -O3 binary, which is the one worth measuring"
+               :task (apply p/shell (release-or-die) *command-line-args*)}
+
+  shot {:doc "Release binary, 5 game-seconds, write helitorus.png at frame 300"
+        :task (p/shell (release-or-die) "5" "helitorus.png" "300")}
+
+  check {:doc "Compile the namespace"
+         :task (do (p/shell "lein" "jank" "compile" "--disable-sandbox")
+                   (println "OK  lisp-games.helitorus compiled"))}
+
+  clean {:doc "Drop the native build cache"
+         :task (p/shell "rm" "-rf" "target")}
+
+  doctor {:doc "Check jank, lein and libraylib"
+          :task (do (p/shell {:continue true} "sh" "-c"
+                             "printf 'jank       '; command -v jank >/dev/null && echo present || echo 'NOT FOUND'")
+                    (p/shell {:continue true} "sh" "-c"
+                             "printf 'lein       '; command -v lein >/dev/null && echo present || echo 'NOT FOUND'")
+                    (p/shell {:continue true} "sh" "-c"
+                             "printf 'libraylib  '; ls /opt/homebrew/lib/libraylib.dylib 2>/dev/null || ldconfig -p 2>/dev/null | grep -m1 libraylib || echo 'NOT FOUND - brew install raylib'"))}}}

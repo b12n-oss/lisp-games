@@ -1,0 +1,446 @@
+;; Helitorus, after Michiel Borkent's (@borkdude) examples/helitorus.clj in
+;; babashka/ffi: https://github.com/babashka/ffi/blob/main/examples/helitorus.clj
+;;
+;; That example is the original and this file is a port of it onto jank's cpp/
+;; interop. The geometry, the painter ordering, the backface test, the lighting
+;; and the palette are his and unchanged. His own header credits a Scittle
+;; canvas demo one step further back.
+;;
+;; babashka/ffi is MIT licensed, Copyright (c) 2026 Michiel Borkent; see
+;; NOTICE.md at the root of this repository for the notice in full.
+
+(ns lisp-games.helitorus
+  "A helix of n windings around a torus, swept into a tube.
+
+  Run it with `lein run --disable-sandbox`, or `bb helitorus`. Drag to turn,
+  wheel to zoom, LEFT/RIGHT change the winding count and UP/DOWN the
+  resolution along the spine.
+
+  Four things are specific to this port, each established by a spike rather
+  than assumed:
+
+  - jank has NO primitive arrays. `double-array`, `int-array` and `aget` all
+    exist in clojure.core.jank and all throw `TODO: port ...`, checked against
+    upstream jank on 2026-09-20. So the ten buffers this program needs are
+    native, from `malloc`, cast to `(:* double)` or `(:* int)`, read with
+    `cpp/aget` and written with `(cpp/= (cpp/aget buf i) v)`.
+  - A native pointer cannot be a jank fn's parameter: arguments arrive boxed
+    and `cpp/aget` will not subscript them. So each buffer is carried as a
+    `cpp/box` and unboxed with its type at the top of every fn that touches
+    it. Same reason a jank fn may not RETURN a native value, which is the
+    constraint the Pac-Man port hits with Color.
+  - There is no JVM, so no Math/*, no parse-long and no format. C math comes
+    from math.h, the clock from GetTime, integer parsing from TextToInteger,
+    and the HUD is assembled with `str`.
+  - `rlColor4ub` takes unsigned chars, and jank will not narrow an int for
+    you. Each component goes through `(cpp/cast (:unsigned char) ...)`.
+
+  The surface goes out one rlgl batch per ring. That is not optional: rlgl
+  cannot flush inside an open rlBegin/rlEnd, and the whole figure overflows
+  the vertex buffer in one go."
+  (:include "raylib.h" "rlgl.h" "math.h" "stdlib.h"))
+
+;; --- constants ---------------------------------------------------------------
+
+(def ^:const W 1000)
+(def ^:const H 560)
+(def CX (/ W 2.0))
+(def CY (/ H 2.0))
+
+(def ^:const NV 12)          ; points around the tube cross-section
+(def ^:const MAX-NU 900)     ; max points along the spine
+(def ^:const R 1.0)          ; major radius
+(def ^:const r2 0.30)        ; minor radius of the torus
+(def ^:const r3 0.11)        ; radius of the swept tube
+(def ^:const DIST 4.6)
+(def ^:const FOCAL 3.2)
+(def TAU 6.283185307179586)
+
+;; --- run state ---------------------------------------------------------------
+
+(def NU (atom 260))
+(def twists (atom 14))
+(def rot-x (atom 0.55))
+(def rot-y (atom 0.0))
+(def vel-x (atom 0.0))
+(def vel-y (atom 0.45))
+(def zoom (atom 250.0))
+(def dragging (atom false))
+(def last-px (atom 0))
+(def last-py (atom 0))
+(def order-nu (atom 0))
+
+;; --- native buffers ----------------------------------------------------------
+;; jank has no primitive arrays (see the namespace docstring), so these are
+;; malloc'd and boxed. A box is an ordinary jank value, so it can be returned
+;; from a fn and held in a map; the raw pointer cannot.
+
+(defn alloc-doubles [n]
+  (cpp/box (cpp/cast (:* double) (cpp/malloc (cpp/size_t (cpp/long (* 8 n)))))))
+
+(defn alloc-ints [n]
+  (cpp/box (cpp/cast (:* int) (cpp/malloc (cpp/size_t (cpp/long (* 4 n)))))))
+
+(defn dget [box i]
+  (+ 0.0 (cpp/aget (cpp/unbox (:* double) box) (cpp/int i))))
+
+(defn dset! [box i v]
+  (cpp/= (cpp/aget (cpp/unbox (:* double) box) (cpp/int i)) (cpp/double v))
+  nil)
+
+(defn iget [box i]
+  (int (cpp/aget (cpp/unbox (:* int) box) (cpp/int i))))
+
+(defn iset! [box i v]
+  (cpp/= (cpp/aget (cpp/unbox (:* int) box) (cpp/int i)) (cpp/int (int v)))
+  nil)
+
+;; --- C math ------------------------------------------------------------------
+;; Every one of these returns a native double, so it is boxed back into a jank
+;; number at the call site. That boxing is the honest cost of this port.
+
+(defn m-cos [x] (+ 0.0 (cpp/cos (cpp/double x))))
+(defn m-sin [x] (+ 0.0 (cpp/sin (cpp/double x))))
+(defn m-sqrt [x] (+ 0.0 (cpp/sqrt (cpp/double x))))
+(defn m-pow [x y] (+ 0.0 (cpp/pow (cpp/double x) (cpp/double y))))
+(defn m-exp [x] (+ 0.0 (cpp/exp (cpp/double x))))
+(defn m-abs [x] (+ 0.0 (cpp/fabs (cpp/double x))))
+
+;; --- palette -----------------------------------------------------------------
+;; hsl(337..349, 100..78%, 17..72%), the Scittle palette, precomputed so the
+;; draw loop never converts a colour.
+
+(defn hsl->rgb [h s l]
+  (let [c (* (- 1.0 (m-abs (- (* 2.0 l) 1.0))) s)
+        h2 (/ h 60.0)
+        x (* c (- 1.0 (m-abs (- (mod h2 2.0) 1.0))))
+        m (- l (/ c 2.0))
+        rgb (cond
+              (< h2 1) [c x 0.0]
+              (< h2 2) [x c 0.0]
+              (< h2 3) [0.0 c x]
+              (< h2 4) [0.0 x c]
+              (< h2 5) [x 0.0 c]
+              :else [c 0.0 x])]
+    [(int (* 255 (+ (nth rgb 0) m)))
+     (int (* 255 (+ (nth rgb 1) m)))
+     (int (* 255 (+ (nth rgb 2) m)))]))
+
+(defn init-palette! [pr pg pb]
+  (loop [i 0]
+    (when (< i 64)
+      (let [t (/ i 63.0)
+            rgb (hsl->rgb (+ 337.0 (* 12.0 t))
+                          (/ (- 100.0 (* 22.0 t)) 100.0)
+                          (/ (+ 17.0 (* 55.0 t)) 100.0))]
+        (iset! pr i (nth rgb 0))
+        (iset! pg i (nth rgb 1))
+        (iset! pb i (nth rgb 2)))
+      (recur (inc i)))))
+
+(defn init-phi! [cos-phi sin-phi]
+  (loop [j 0]
+    (when (< j NV)
+      (let [a (/ (* TAU j) NV)]
+        (dset! cos-phi j (m-cos a))
+        (dset! sin-phi j (m-sin a)))
+      (recur (inc j)))))
+
+(defn reset-order! [order nu]
+  (loop [i 0]
+    (when (< i nu)
+      (iset! order i i)
+      (recur (inc i))))
+  (reset! order-nu nu))
+
+;; --- one frame's worth of geometry ------------------------------------------
+
+(defn sort-rings!
+  "Insertion sort of `order` by ring depth, far rings first. It survives the
+  frame, so consecutive frames start almost sorted and this is nearly linear."
+  [order ring-z nu]
+  (loop [i 1]
+    (when (< i nu)
+      (let [v (iget order i)
+            vz (dget ring-z v)]
+        (loop [k (dec i)]
+          (if (and (>= k 0) (< (dget ring-z (iget order k)) vz))
+            (do (iset! order (inc k) (iget order k))
+                (recur (dec k)))
+            (iset! order (inc k) v))))
+      (recur (inc i)))))
+
+(defn compute!
+  "Project every vertex of the surface into sx/sy, shade it into shade, and
+  sort the rings back to front. Pure arithmetic and buffer writes."
+  [bufs t]
+  (let [cos-phi (:cos-phi bufs) sin-phi (:sin-phi bufs)
+        sx (:sx bufs) sy (:sy bufs) shade (:shade bufs)
+        ring-z (:ring-z bufs) order (:order bufs)
+        nu @NU
+        n @twists
+        r (+ r2 r3)
+        zm @zoom
+        ay @rot-y
+        ax @rot-x
+        cay (m-cos ay) say (m-sin ay)
+        cax (m-cos ax) sax (m-sin ax)
+        po (* t 1.1)
+        cpo (m-cos po)
+        spo (m-sin po)
+        dtheta (/ TAU nu)]
+    (when (not= nu @order-nu) (reset-order! order nu))
+    (loop [i 0]
+      (when (< i nu)
+        (let [th (* i dtheta)
+              nth2 (* n th)
+              cn (m-cos nth2) sn (m-sin nth2)
+              ct (m-cos th) st (m-sin th)
+              xr (+ R (* r cn))
+              ;; the point on the spine
+              px (* xr ct) py (* xr st) pz (* r sn)
+              ;; its tangent: the theta derivative, written out
+              tx (- (* (- xr) st) (* n r ct sn))
+              ty (- (* xr ct) (* n r st sn))
+              tz (* n r cn)
+              ;; the tangent of the flat circle under the spine
+              bx (- st) by ct
+              ;; tube normal: t cross b, normalised
+              nx0 (- (* ty 0.0) (* tz by))
+              ny0 (- (* tz bx) (* tx 0.0))
+              nz0 (- (* tx by) (* ty bx))
+              nl (m-sqrt (+ (* nx0 nx0) (* ny0 ny0) (* nz0 nz0)))
+              nx (/ nx0 nl) ny (/ ny0 nl) nz (/ nz0 nl)
+              ;; third axis: n cross t, normalised
+              ux0 (- (* ny tz) (* nz ty))
+              uy0 (- (* nz tx) (* nx tz))
+              uz0 (- (* nx ty) (* ny tx))
+              ul (m-sqrt (+ (* ux0 ux0) (* uy0 uy0) (* uz0 uz0)))
+              ux (/ ux0 ul) uy (/ uy0 ul) uz (/ uz0 ul)
+              base (* i NV)]
+          ;; ring depth, for the painter's ordering
+          (let [rz (+ (* px say) (* pz cay))]
+            (dset! ring-z i (- (* rz cax) (* py sax))))
+          (loop [j 0]
+            (when (< j NV)
+              (let [c0 (dget cos-phi j)
+                    s0 (dget sin-phi j)
+                    cp (- (* c0 cpo) (* s0 spo))
+                    sp (+ (* s0 cpo) (* c0 spo))
+                    ;; the surface normal, then the point on the surface
+                    vx (+ (* ux cp) (* nx sp))
+                    vy (+ (* uy cp) (* ny sp))
+                    vz (+ (* uz cp) (* nz sp))
+                    wx (+ px (* r3 vx))
+                    wy (+ py (* r3 vy))
+                    wz (+ pz (* r3 vz))
+                    ;; rotate about Y, then about X
+                    x1 (- (* wx cay) (* wz say))
+                    z1 (+ (* wx say) (* wz cay))
+                    y2 (+ (* wy cax) (* z1 sax))
+                    z2 (- (* z1 cax) (* wy sax))
+                    ;; the same rotation on the normal
+                    m1 (- (* vx cay) (* vz say))
+                    q1 (+ (* vx say) (* vz cay))
+                    m2 (+ (* vy cax) (* q1 sax))
+                    q2 (- (* q1 cax) (* vy sax))
+                    ;; perspective divide
+                    k (/ (* zm FOCAL) (+ FOCAL DIST z2))
+                    ;; diffuse, plus a rim term
+                    lum (+ (* 0.60 (max 0.0 (+ (* m1 -0.40) (* m2 -0.62) (* q2 -0.68))))
+                           (* 0.28 (max 0.0 (- q2)))
+                           0.12)
+                    o (+ base j)]
+                (dset! sx o (+ CX (* x1 k)))
+                (dset! sy o (- CY (* y2 k)))
+                (iset! shade o (min 63 (max 0 (int (* 63.0 lum))))))
+              (recur (inc j))))
+          (recur (inc i)))))
+    (sort-rings! order ring-z nu)))
+
+;; --- submitting it ----------------------------------------------------------
+
+(defn vert! [x y]
+  (cpp/rlVertex2f (cpp/float x) (cpp/float y))
+  nil)
+
+(defn colour! [r g b]
+  (cpp/rlColor4ub (cpp/cast (:unsigned char) (cpp/int (int r)))
+                  (cpp/cast (:unsigned char) (cpp/int (int g)))
+                  (cpp/cast (:unsigned char) (cpp/int (int b)))
+                  (cpp/cast (:unsigned char) (cpp/int 255)))
+  nil)
+
+(defn draw-ring!
+  "One ring of the tube as flat-shaded quads, two rlgl triangles each. A quad
+  is skipped when the 2D cross product of its first two edges is negative,
+  which is the back of the tube."
+  [bufs i nu]
+  (let [sx (:sx bufs) sy (:sy bufs) shade (:shade bufs)
+        pr (:pal-r bufs) pg (:pal-g bufs) pb (:pal-b bufs)
+        i2 (let [x (inc i)] (if (= x nu) 0 x))
+        b1 (* i NV)
+        b2 (* i2 NV)]
+    (loop [j 0]
+      (when (< j NV)
+        (let [j2 (let [x (inc j)] (if (= x NV) 0 x))
+              a (+ b1 j) b (+ b1 j2)
+              c (+ b2 j2) d (+ b2 j)
+              xa (dget sx a) ya (dget sy a)
+              xb (dget sx b) yb (dget sy b)
+              xc (dget sx c) yc (dget sy c)]
+          (when (pos? (- (* (- xb xa) (- yc ya))
+                         (* (- yb ya) (- xc xa))))
+            (let [s (iget shade a)]
+              (colour! (iget pr s) (iget pg s) (iget pb s)))
+            (vert! xa ya) (vert! xb yb) (vert! xc yc)
+            (vert! xa ya) (vert! xc yc) (vert! (dget sx d) (dget sy d))))
+        (recur (inc j))))))
+
+(defn draw-surface! [bufs nu]
+  (let [order (:order bufs)]
+    (loop [oi 0]
+      (when (< oi nu)
+        ;; One rlBegin/rlEnd batch per ring: rlgl cannot flush inside an open
+        ;; batch, and the whole surface at once overflows its vertex buffer.
+        (cpp/rlBegin (cpp/int cpp/RL_TRIANGLES))
+        (draw-ring! bufs (iget order oi) nu)
+        (cpp/rlEnd)
+        (recur (inc oi))))))
+
+;; --- input -------------------------------------------------------------------
+
+(defn advance-camera! [dt]
+  (if (cpp/IsMouseButtonDown cpp/MOUSE_BUTTON_LEFT)
+    (let [x (int (cpp/GetMouseX)) y (int (cpp/GetMouseY))]
+      (when @dragging
+        (let [dx (- x @last-px) dy (- y @last-py)]
+          (swap! rot-y + (* dx 0.008))
+          (swap! rot-x (fn [v] (max -1.45 (min 1.45 (+ v (* dy 0.008))))))
+          (reset! vel-y (* dx 0.35))
+          (reset! vel-x (* dy 0.35))))
+      (reset! dragging true)
+      (reset! last-px x)
+      (reset! last-py y))
+    (do
+      (reset! dragging false)
+      ;; releasing keeps the spin and decays it to an idle turn
+      (let [decay (m-pow 0.94 (/ dt 0.016))
+            vy (+ (* @vel-y decay) (* 0.16 (- 1.0 decay)))]
+        (reset! vel-y vy)
+        (reset! vel-x (* @vel-x decay)))))
+  (swap! rot-y + (* @vel-y dt))
+  (swap! rot-x (fn [v] (max -1.45 (min 1.45 (+ v (* @vel-x dt)))))))
+
+(defn handle-keys! []
+  (let [w (+ 0.0 (cpp/GetMouseWheelMove))]
+    (when-not (zero? w)
+      (swap! zoom (fn [z] (max 110.0 (min 520.0 (* z (m-exp (* 0.09 w)))))))))
+  (when (cpp/IsKeyPressed cpp/KEY_RIGHT) (swap! twists (fn [v] (min 24 (inc v)))))
+  (when (cpp/IsKeyPressed cpp/KEY_LEFT) (swap! twists (fn [v] (max 3 (dec v)))))
+  (when (cpp/IsKeyDown cpp/KEY_UP) (swap! NU (fn [v] (min MAX-NU (+ v 4)))))
+  (when (cpp/IsKeyDown cpp/KEY_DOWN) (swap! NU (fn [v] (max 60 (- v 4))))))
+
+;; --- the HUD -----------------------------------------------------------------
+;; No `format` without a JVM, so one decimal place is done by hand.
+
+(defn r1 [x] (/ (int (+ 0.5 (* 10.0 x))) 10.0))
+
+(defn hud-line [fps compute-ms draw-ms nu tw]
+  (str "fps " (int (+ 0.5 fps))
+       " | compute " (r1 compute-ms) " ms"
+       " | draw " (r1 draw-ms) " ms"
+       " | " (int (/ (* fps nu NV) 1000)) "k verts/s"
+       " | windings " tw
+       " | res " nu))
+
+(defn text! [s x y size c]
+  (cpp/DrawText s (cpp/int (int x)) (cpp/int (int y)) (cpp/int (int size))
+                (cpp/GetColor (cpp/uint32_t c)))
+  nil)
+
+;; --- the loop ----------------------------------------------------------------
+
+(defn -main
+  "Open a window and run until closed.
+
+  lein run --disable-sandbox                    until the window is closed
+  lein run --disable-sandbox 10                 quit after ten game-seconds
+  lein run --disable-sandbox 3 out.png 40       quit after three, shot frame 40
+  lein run --disable-sandbox 3 out.png 40 400   the same, at resolution 400
+
+  `seconds` counts GAME time, summed from the clamped per-frame dt, not wall
+  time. Under `lein run` the load compiles as it goes, so frame 0 pays for the
+  whole draw path at once and a wall clock would charge that against the
+  deadline. That cost belongs to `lein run`, not to jank: the AOT binary in
+  target/debug/ shows no measurable warm-up."
+  [& args]
+  (let [secs (if (first args) (int (cpp/TextToInteger (first args))) 0)
+        shot-path (second args)
+        at (if (nth args 2 nil) (int (cpp/TextToInteger (nth args 2 nil))) 40)
+        res (if (nth args 3 nil) (int (cpp/TextToInteger (nth args 3 nil))) 0)
+        bufs {:cos-phi (alloc-doubles NV)
+              :sin-phi (alloc-doubles NV)
+              :sx (alloc-doubles (* MAX-NU NV))
+              :sy (alloc-doubles (* MAX-NU NV))
+              :shade (alloc-ints (* MAX-NU NV))
+              :ring-z (alloc-doubles MAX-NU)
+              :order (alloc-ints MAX-NU)
+              :pal-r (alloc-ints 64)
+              :pal-g (alloc-ints 64)
+              :pal-b (alloc-ints 64)}]
+    (when (pos? res) (reset! NU (max 60 (min MAX-NU res))))
+    (init-phi! (:cos-phi bufs) (:sin-phi bufs))
+    (init-palette! (:pal-r bufs) (:pal-g bufs) (:pal-b bufs))
+    (cpp/InitWindow (cpp/int W) (cpp/int H) "lisp-games - helitorus")
+    (cpp/SetTargetFPS (cpp/int 120))
+    (cpp/rlDisableBackfaceCulling)
+    (loop [frame 0
+           t 0.0
+           frames 0
+           acc 0.0
+           c-acc 0.0
+           d-acc 0.0
+           hud "computing..."]
+      (if (or (cpp/WindowShouldClose)
+              (and (pos? secs) (> t secs)))
+        nil
+        (let [dt (min 0.05 (+ 0.0 (cpp/GetFrameTime)))
+              t2 (+ t dt)]
+          (handle-keys!)
+          (advance-camera! dt)
+          (let [c0 (+ 0.0 (cpp/GetTime))
+                _ (compute! bufs t2)
+                c1 (+ 0.0 (cpp/GetTime))]
+            (cpp/BeginDrawing)
+            (cpp/ClearBackground (cpp/GetColor (cpp/uint32_t 0xFFFFFFFF)))
+            (let [d0 (+ 0.0 (cpp/GetTime))
+                  _ (draw-surface! bufs @NU)
+                  d1 (+ 0.0 (cpp/GetTime))
+                  frames2 (inc frames)
+                  acc2 (+ acc dt)
+                  c-acc2 (+ c-acc (* 1000.0 (- c1 c0)))
+                  d-acc2 (+ d-acc (* 1000.0 (- d1 d0)))
+                  refresh? (>= acc2 0.4)
+                  hud2 (if refresh?
+                         (hud-line (/ frames2 acc2) (/ c-acc2 frames2)
+                                   (/ d-acc2 frames2) @NU @twists)
+                         hud)]
+              (when refresh? (println hud2))
+              (text! hud2 12 12 20 0x37414FFF)
+              (text! "drag to turn, wheel to zoom, LEFT/RIGHT windings, UP/DOWN resolution"
+                     12 (- H 28) 16 0x9CA3AFFF)
+              ;; raylib defers batched geometry until EndDrawing, so a
+              ;; screenshot taken here sees only the cleared background
+              ;; unless the batch is forced out first.
+              (when (and (some? shot-path) (= frame at))
+                (cpp/rlDrawRenderBatchActive)
+                (cpp/TakeScreenshot shot-path))
+              (cpp/EndDrawing)
+              (recur (inc frame) t2
+                     (if refresh? 0 frames2)
+                     (if refresh? 0.0 acc2)
+                     (if refresh? 0.0 c-acc2)
+                     (if refresh? 0.0 d-acc2)
+                     hud2))))))
+    (cpp/CloseWindow)))

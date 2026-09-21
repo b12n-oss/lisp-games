@@ -13,12 +13,12 @@ and every port lands with its credit in the same commit. Who wrote what is in
 
 | Game | Original | Ports |
 |---|---|---|
-| [`helitorus/`](helitorus) | [Michiel Borkent](https://github.com/borkdude), [babashka/ffi](https://github.com/babashka/ffi/blob/main/examples/helitorus.clj) | babashka, jolt, Clojure |
+| [`helitorus/`](helitorus) | [Michiel Borkent](https://github.com/borkdude), [babashka/ffi](https://github.com/babashka/ffi/blob/main/examples/helitorus.clj) | babashka, jolt, Clojure, jank |
 
 | | |
 |---|---|
 | **babashka** <br> ![babashka](docs/demos/helitorus-babashka.png) | **jolt** <br> ![jolt](docs/demos/helitorus-jolt.png) |
-| **Clojure/JVM** <br> ![clojure](docs/demos/helitorus-clojure.png) | |
+| **Clojure/JVM** <br> ![clojure](docs/demos/helitorus-clojure.png) | **jank** <br> ![jank](docs/demos/helitorus-jank.png) |
 
 ## Layout
 
@@ -82,16 +82,18 @@ rather than a guess. On an M1 Pro:
 | Resolution | | compute | draw | fps |
 |---|---|---|---|---|
 | 260 (default) | Clojure | 0.7 ms | 0.3 ms | 115 |
+| | jank | 1.2 ms | 0.8 ms | 115 |
 | | jolt | 1.5 ms | 1.0 ms | 115 |
 | | babashka | 5.1 ms | 2.3 ms | 115 |
 | 900 (max) | Clojure | 2.4 ms | 1.0 ms | 116 |
+| | jank | 4.3 ms | 2.8 ms | ~108 |
 | | jolt | 5.0 ms | 3.3 ms | ~95 |
 | | babashka | 18.0 ms | 8.3 ms | ~35 |
 
-At the default resolution all three hold exactly the same frame rate, because
+At the default resolution all four hold exactly the same frame rate, because
 none of them is the bottleneck there. Push to 900 rings and they separate. The
-longer version, including the reflection trap that made the Clojure number
-thirty times too slow until it was caught, is in
+longer version, including the two measurements that were badly wrong until a
+suspicious ordering gave them away, is in
 [helitorus/README.md](helitorus/README.md).
 
 A sibling repo, [raylib-pacman](https://github.com/b12n-oss/raylib-pacman),
