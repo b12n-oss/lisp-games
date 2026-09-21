@@ -1,0 +1,19 @@
+# build output
+target/
+.cpcache/
+.jolt/
+.lsp/
+.clj-kondo/.cache/
+
+# nrepl handshake files, written and removed per run
+.nrepl-port
+NREPL.lock
+REPL.lock
+
+# screenshots a run drops next to the example; the committed ones live in docs/
+*/*/helitorus.png
+*/*/probe.png
+
+# docs-engine build output
+docs/_site/
+_site/

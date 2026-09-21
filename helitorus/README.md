@@ -1,0 +1,69 @@
+# helitorus
+
+A helix of n windings around a torus, swept into a tube, turned by the mouse.
+
+![helitorus in babashka](../docs/demos/helitorus-babashka.png)
+
+## Credit
+
+The program is **Michiel Borkent**'s ([@borkdude](https://github.com/borkdude)).
+Every port here descends from
+[`examples/helitorus.clj`](https://github.com/babashka/ffi/blob/main/examples/helitorus.clj)
+in [babashka/ffi](https://github.com/babashka/ffi), which is where the geometry,
+the per-ring painter ordering, the backface test, the lighting and the palette
+all came from. The ports keep the maths unchanged and vary only in how each
+runtime reaches raylib.
+
+His header credits it one step further back, to a Scittle demo drawing the same
+figure to a 2D canvas. babashka/ffi is MIT licensed and the notice is in
+[NOTICE.md](../NOTICE.md).
+
+## Ports
+
+| Runtime | Directory | Binding | Status |
+|---|---|---|---|
+| babashka | [`helitorus-babashka/`](helitorus-babashka) | `babashka.ffi` | runs |
+| Clojure on the JVM | `helitorus-clojure/` | raylib-clj, coffi over Panama | not written yet |
+| jank | `helitorus-jank/` | `cpp/` interop | not written yet |
+| jolt | `helitorus-jolt/` | `net.b12n/raylib`, `jolt.ffi` | not written yet |
+
+## What makes this one worth porting
+
+Pac-Man barely works the interpreter. A few hundred map updates per frame, a
+60 FPS cap, and every runtime looks the same. helitorus does not let anyone off
+that lightly. Every frame it walks the whole spine, builds a ring of twelve
+points around each spine point, projects all of them, shades them, then sorts
+the rings back to front. At the default resolution that is 260 rings and 3120
+vertices rebuilt from scratch, sixty or more times a second, in Clojure rather
+than in C.
+
+So this is where the runtimes should actually separate, and the HUD is built to
+show it: compute milliseconds and draw milliseconds are reported apart, because
+only the first of them is the language's problem. Measured numbers beat guesses
+about which runtime would struggle.
+
+## Running it
+
+```sh
+cd helitorus-babashka && bb helitorus
+```
+
+Drag to turn, wheel to zoom, LEFT and RIGHT change the winding count, UP and
+DOWN change the resolution along the spine.
+
+## Notes for the ports still to come
+
+Two things in the babashka source are the parts that will not move over
+unchanged.
+
+**Primitive arrays.** The surface is held in `double-array` and `int-array`
+buffers written with `aset-double` and `aset-int`, deliberately rather than with
+plain `aset`, because on babashka a plain `aset` on a primitive array goes
+through `java.lang.reflect.Array` and costs about 6.7 microseconds a write
+against roughly 37 nanoseconds typed. That comment is in the original and it is
+worth keeping. jolt and jank will each need their own answer here.
+
+**One rlgl batch per ring.** rlgl cannot flush inside an open
+`rlBegin`/`rlEnd`, and the whole surface overflows the vertex buffer in one go,
+so `draw!` opens and closes a batch per ring. Any port that collapses that into
+a single batch will render part of the figure and drop the rest.

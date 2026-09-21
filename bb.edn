@@ -1,0 +1,100 @@
+{:tasks
+ {:requires ([babashka.fs :as fs]
+             [babashka.process :as p]
+             [clojure.string :as str])
+
+  :init
+  (do
+    ;; One entry per standalone port, and the only place they are listed.
+    ;; Every task below walks this vector, so adding a runtime to a game, or a
+    ;; whole new game, means adding a directory and an entry here. Nothing
+    ;; else in this file changes.
+    ;;
+    ;; :game is the directory under the repo root, :dir the runtime directory
+    ;; inside it, and :cmd what to run once you are in there.
+    (def ports
+      [{:id "helitorus/babashka"
+        :game "helitorus" :dir "helitorus-babashka"
+        :runtime "babashka" :binding "babashka.ffi"
+        :cmd ["bb" "helitorus"]
+        :desc "raylib over the babashka.ffi built into bb. Scalars throughout by choice, and the surface emitted as one rlgl batch per ring."}])
+
+    (defn port-path [{:keys [game dir]}] (fs/file game dir))
+
+    (defn missing
+      "Ports whose directory has no bb.edn yet, so the table in the README can
+       promise a runtime before anyone has written it."
+      []
+      (remove (fn [pt] (fs/exists? (fs/file (port-path pt) "bb.edn"))) ports))
+
+    (defn run-in!
+      "Run a task inside one port's directory and return its exit code. Never
+       throws, so a sweep reports every port rather than stopping at the first
+       one that is not installed."
+      [pt args]
+      (let [d (port-path pt)]
+        (println)
+        (println (str "==> " (:id pt) " : " (str/join " " args)))
+        (if-not (fs/exists? (fs/file d "bb.edn"))
+          (do (println "    not written yet") 1)
+          (:exit (p/shell {:dir (str d) :continue true} (str/join " " args))))))
+
+    (defn sweep!
+      "Run the same task across every port and print a summary table."
+      [args]
+      (let [results (doall (map (fn [pt] [(:id pt) (run-in! pt args)]) ports))]
+        (println)
+        (println "  summary")
+        (doseq [[id exit] results]
+          (println (format "  %-24s %s" id (if (zero? exit) "ok" "FAILED"))))
+        (when (some (fn [[_ e]] (not (zero? e))) results)
+          (System/exit 1)))))
+
+  info
+  {:doc "Every task here, grouped"
+   :task (do (println)
+             (println "  lisp-games")
+             (println "  small graphical programs, one directory per game, one per runtime")
+             (println)
+             (println "  bb ports                 list every port and its status")
+             (println "  bb play <id>             run one port, e.g. bb play helitorus/babashka")
+             (println "  bb check-all             load or compile every port, no window")
+             (println "  bb shot-all              run each for 3 seconds, capture a PNG")
+             (println "  bb doctor-all            which toolchain is missing where")
+             (println)
+             (println "  Each port directory has its own bb.edn with the same tasks.")
+             (println "  cd helitorus/helitorus-babashka && bb info")
+             (println))}
+
+  ports
+  {:doc "List every port, with the ones not written yet marked"
+   :task (do (println)
+             (doseq [pt ports]
+               (println (format "  %-24s %-10s %-22s %s"
+                                (:id pt) (:runtime pt) (:binding pt)
+                                (if (fs/exists? (fs/file (port-path pt) "bb.edn"))
+                                  "ready" "not written yet"))))
+             (println))}
+
+  ;; `play` rather than `run`, which is a bb built-in and warns when shadowed
+  play
+  {:doc "Run one port by id (bb play helitorus/babashka [args...])"
+   :task (let [[id & args] *command-line-args*
+               pt (first (filter (fn [p] (= id (:id p))) ports))]
+           (if-not pt
+             (do (println "unknown port:" id)
+                 (println "try one of:" (str/join ", " (map :id ports)))
+                 (System/exit 1))
+             (System/exit (run-in! pt (concat (:cmd pt) args)))))}
+
+  check-all
+  {:doc "Load or compile every port without opening a window"
+   :task (sweep! ["bb" "check"])}
+
+  shot-all
+  {:doc "Run every port for 3 seconds and capture a PNG"
+   :task (sweep! ["bb" "shot"])}
+
+  doctor-all
+  {:doc "Ask every port whether its toolchain is present"
+   :task (sweep! ["bb" "doctor"])}}}

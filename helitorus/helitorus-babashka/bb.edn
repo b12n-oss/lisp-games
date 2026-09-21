@@ -1,0 +1,35 @@
+{:paths ["src"]
+
+ :tasks
+ {info {:doc "Every task in this example, grouped"
+        :task (do (println)
+                  (println "  lisp-games / helitorus / helitorus-babashka")
+                  (println "  raylib called from babashka over babashka.ffi")
+                  (println)
+                  (println "  bb helitorus                  run it, window stays open")
+                  (println "  bb helitorus 10               run it, quit after 10 seconds")
+                  (println "  bb helitorus 3 out.png 40 400 quit after 3, shot frame 40, res 400")
+                  (println "  bb shot                       run 3 seconds, write helitorus.png")
+                  (println "  bb check                      load the namespace, no window")
+                  (println "  bb doctor                     check bb, libraylib and the FFI path")
+                  (println))}
+
+  helitorus {:doc "A helix of n windings around a torus, swept into a tube"
+             :requires ([lisp-games.helitorus :as h])
+             :task (apply h/-main *command-line-args*)}
+
+  shot {:doc "Run for 3 seconds and write helitorus.png on frame 40"
+        :requires ([lisp-games.helitorus :as h])
+        :task (h/-main "3" "helitorus.png" "40")}
+
+  check {:doc "Load every namespace without opening a window"
+         :task (do (require (quote lisp-games.helitorus))
+                   (println "OK  lisp-games.helitorus loaded, libraylib resolved"))}
+
+  doctor {:doc "Check bb, libraylib and the FFI path"
+          :requires ([babashka.ffi :as ffi])
+          :task (do (println "bb        " (System/getProperty "babashka.version"))
+                    (println "libraylib " (str (:path (ffi/load-system-library "raylib"))))
+                    (println)
+                    (println "If libraylib is missing: brew install raylib (macOS)")
+                    (println "or install your distro's raylib 6.0+ package."))}}}

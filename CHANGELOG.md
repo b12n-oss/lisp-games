@@ -1,0 +1,26 @@
+# Changelog
+
+All notable changes to this project are documented here.
+
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+
+## [Unreleased]
+
+### Added
+
+- The repository, laid out as one directory per game and one per runtime
+  inside it (`<game>/<game>-<runtime>/`), so a game can gain runtimes and the
+  repo can gain games without either disturbing the other.
+- `helitorus`, a helix of n windings around a torus swept into a tube, ported
+  from Michiel Borkent's (@borkdude) `examples/helitorus.clj` in babashka/ffi.
+  The babashka port runs: about 115 fps on an M1 Pro at the default resolution,
+  with 5.1 ms of compute and 2.4 ms of draw per frame. The geometry, painter
+  ordering, backface test, lighting and palette are unchanged from the
+  original. What the port adds is a namespace with a `-main`, the unattended
+  run arguments and a batch flush before the screenshot.
+- `NOTICE.md`, which names the author of every original and reproduces its
+  licence. The rule the file states, and that this repo is starting with rather
+  than retrofitting: a port lands with its credit in the same commit.
+- EPL-2.0 licence, with the ported work's own notices kept in `NOTICE.md`.
+- A committed still of the babashka port under `docs/demos/`, so reading the
+  repo needs no capture toolchain.
