@@ -35,6 +35,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   frame. babashka at 10000 instances: `static` 115 fps with 0.0 ms build,
   `spin` 20 fps with 50.5 ms build, while `draw` stays at 0.4 ms in both
   because one draw call is one draw call.
+- **Listed, 2026-09-21.** The project is in
+  [awesome-jolt](https://github.com/jlt-commons/awesome-jolt) under Applications
+  and Libraries, beside its sibling raylib-pacman, and carries a card on
+  <https://b12n-oss.github.io/>. Both of those are ours, so neither is an
+  independent endorsement. What they add is a route to the repo for somebody
+  looking for Jolt projects rather than for this one by name.
 - **Public, 2026-09-21.** Repository visibility flipped, then GitHub Pages
   enabled as its own separate decision, then `PUBLISH_SITE` set and the
   workflow's `push`/`pull_request` triggers restored by hand. The site serves
