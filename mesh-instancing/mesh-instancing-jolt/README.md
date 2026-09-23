@@ -24,8 +24,8 @@ every matrix every frame, which is the runtime's own contribution.
 | Mode | Instances | build | draw | fps |
 |---|---|---|---|---|
 | static | 10000 | 0.0 ms | 0.5 ms | 113 |
-| spin | 10000 | 27.2 ms | 0.3 ms | 33 |
-| spin | 2000 | 5.5 ms | 0.2 ms | 115 |
+| spin | 10000 | 26.9 ms | 0.3 ms | 35 |
+| spin | 2000 | 5.4 ms | 0.2 ms | 115 |
 
 `draw` barely moves, because one draw call is one draw call. Everything that
 changes is `build`.

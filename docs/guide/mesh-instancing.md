@@ -37,11 +37,11 @@ which is the runtime's own contribution.
 | static | 10000 | all four | 0.0 ms | ~0.4 ms | ~114 |
 | spin | 10000 | Clojure | 1.9 ms | 0.4 ms | 110 |
 | | | jank | 6.5 ms | 0.3 ms | 115 |
-| | | jolt | 27.2 ms | 0.3 ms | 33 |
+| | | jolt | 26.9 ms | 0.3 ms | 35 |
 | | | babashka | 50.5 ms | 0.4 ms | 20 |
 | spin | 2000 | Clojure | 0.7 ms | 0.2 ms | 106 |
 | | | jank | 1.1 ms | 0.2 ms | 114 |
-| | | jolt | 5.5 ms | 0.2 ms | 115 |
+| | | jolt | 5.4 ms | 0.2 ms | 115 |
 | | | babashka | 9.9 ms | 0.3 ms | 87 |
 
 The `draw` column barely moves, whatever the runtime and whatever the count,

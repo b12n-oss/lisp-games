@@ -39,9 +39,17 @@ Where a range appears, repeated runs gave a range and it seemed dishonest to
 quote the best one.
 
 The versions in play were babashka 1.13.220, Clojure 1.12 on a JDK 24, jank
-0.1-alpha with `raylib-sys 2026.09-3`, jolt 0.8.10, and raylib 6.0 from
+0.1-alpha with `raylib-sys 2026.09-3`, jolt 0.8.11, and raylib 6.0 from
 Homebrew. Every port was measured optimised: the jank figures come from its
 `-O3` binary rather than from `lein run`, which builds at `-O0`.
+
+The jolt rows were first measured on 0.8.10. When 0.8.11 came out they were
+run again, with both release binaries taking turns on the same machine the
+same afternoon: three 8-second runs each, per configuration. helitorus and the
+`static` mode came out identical to within 0.1 ms. `spin` at 10000 dropped
+from 27.4 to 26.9 ms build, and it did so in all three paired runs. That is
+under 2%. The release notes list nothing that touches arithmetic or
+`jolt.ffi` writes, so the cause is unknown.
 
 That matters more than it sounds. Two of the numbers in this repo were wrong by
 factors of eleven and thirty before anyone checked them, and both times the

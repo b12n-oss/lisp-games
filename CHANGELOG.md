@@ -6,6 +6,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- **jolt ports re-measured on jolt 0.8.11.** Both release binaries ran
+  interleaved on one machine, three runs per configuration. helitorus at 260
+  and 900, and mesh-instancing `static`, did not move. mesh-instancing `spin`
+  went 27.4 to 26.9 ms build at 10000 instances and 5.5 to 5.4 at 2000, the
+  first consistent across every paired run. The tables now quote the 0.8.11
+  medians. Both ports compile unchanged under 0.8.11's stricter private-var
+  rules.
+
 ### Added
 
 - `mesh-instancing`, raylib's own shaders example: ten thousand lit cubes in a

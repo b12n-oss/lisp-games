@@ -69,11 +69,11 @@ On an M1 Pro, all four, every one optimised.
 | | 10000 | babashka | 0.0 ms | 0.4 ms | 115 |
 | spin | 10000 | Clojure | 1.9 ms | 0.4 ms | 110 |
 | | 10000 | jank | 6.5 ms | 0.3 ms | 115 |
-| | 10000 | jolt | 27.2 ms | 0.3 ms | 33 |
+| | 10000 | jolt | 26.9 ms | 0.3 ms | 35 |
 | | 10000 | babashka | 50.5 ms | 0.4 ms | 20 |
 | spin | 2000 | Clojure | 0.7 ms | 0.2 ms | 106 |
 | | 2000 | jank | 1.1 ms | 0.2 ms | 114 |
-| | 2000 | jolt | 5.5 ms | 0.2 ms | 115 |
+| | 2000 | jolt | 5.4 ms | 0.2 ms | 115 |
 | | 2000 | babashka | 9.9 ms | 0.3 ms | 87 |
 
 The gaps here are much wider than in [helitorus](../helitorus), where the same
