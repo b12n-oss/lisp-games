@@ -8,6 +8,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **The site builds with docs-engine v0.4.5.** v0.3.2 stopped building once
+  `setup-jolt` installed jolt 0.8.26: its pinned `jolt-lang/time` has an
+  unescaped quote in a namespace docstring, which jolt 0.8.25 and later refuse.
+  v0.4.5 pins a fixed `jolt-lang/time`, and the site gains search, which the
+  engine turned on by default in v0.4.0.
 - **jolt ports re-measured on jolt 0.8.26.** Paired against 0.8.11 the same
   way, three interleaved runs per configuration. Two cells moved, both slower
   in every paired run: helitorus draw at 900 rings, 3.3 to 3.8 ms, and `spin`

@@ -31,9 +31,11 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 env:
-  # v0.3.2 fixes `jolt run build`/`clean` (docs-engine#3); v0.3.1 added
-  # heading anchors.
-  DOCS_ENGINE_REF: v0.3.2
+  # v0.4.5 pins a jolt-lang/time whose namespace docstring jolt 0.8.25+
+  # accepts; v0.3.2 failed every build once setup-jolt moved to 0.8.26.
+  # v0.4.0 added site search, v0.3.2 fixed `jolt run build`/`clean`
+  # (docs-engine#3), v0.3.1 added heading anchors.
+  DOCS_ENGINE_REF: v0.4.5
   BASE_PATH: /lisp-games
 
 jobs:
