@@ -8,6 +8,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **jolt ports re-measured on jolt 0.8.26.** Paired against 0.8.11 the same
+  way, three interleaved runs per configuration. Two cells moved, both slower
+  in every paired run: helitorus draw at 900 rings, 3.3 to 3.8 ms, and `spin`
+  build at 10000 instances, 26.9 to 27.4. Compute did not move between the
+  endpoints, but a sweep of every release in between shows 0.8.13 cut
+  helitorus compute at 900 from 5.1 to 4.6 ms, and 0.8.20 and 0.8.21 gave it
+  back. Timed on their own, `aset-double` got about 5 ns slower in 0.8.20 and
+  a foreign call with `:float` or `:double` arguments about 3.5 ns slower in
+  0.8.21, while a `:long` call did not change. `docs/guide/index.md` has the
+  table. Both ports compile unchanged on 0.8.26, and the raylib-jlt pin is
+  still current.
 - **jolt ports re-measured on jolt 0.8.11.** Both release binaries ran
   interleaved on one machine, three runs per configuration. helitorus at 260
   and 900, and mesh-instancing `static`, did not move. mesh-instancing `spin`

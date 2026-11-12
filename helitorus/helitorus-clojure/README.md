@@ -90,7 +90,7 @@ Measured on an M1 Pro, against the other two ports running the same geometry:
 | | jolt | 1.5 ms | 1.0 ms | 115 |
 | | babashka | 5.1 ms | 2.3 ms | 115 |
 | 900 (max) | Clojure | 2.4 ms | 1.0 ms | 116 |
-| | jolt | 5.0 ms | 3.3 ms | ~95 |
+| | jolt | 5.0 ms | 3.8 ms | ~95 |
 | | babashka | 18.0 ms | 8.3 ms | ~35 |
 
 The JVM is the fastest of the three and is the only one that still holds the

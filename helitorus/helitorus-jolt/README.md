@@ -65,7 +65,7 @@ Measured on an M1 Pro, against the babashka port running the same geometry:
 |---|---|---|---|---|
 | 260 (default) | jolt | 1.5 ms | 1.0 ms | 115 |
 | | babashka | 5.1 ms | 2.3 ms | 115 |
-| 900 (max) | jolt | 5.0 ms | 3.3 ms | ~95 |
+| 900 (max) | jolt | 5.0 ms | 3.8 ms | ~95 |
 | | babashka | 18.0 ms | 8.3 ms | ~35 |
 
 jolt runs the arithmetic about three and a half times faster. The part worth

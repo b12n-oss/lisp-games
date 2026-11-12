@@ -55,7 +55,7 @@ All four in, on an M1 Pro, every one of them optimised:
 | | babashka | 5.1 ms | 2.3 ms | 115 |
 | 900 (max) | Clojure | 2.4 ms | 1.0 ms | 116 |
 | | jank | 4.3 ms | 2.8 ms | ~108 |
-| | jolt | 5.0 ms | 3.3 ms | ~95 |
+| | jolt | 5.0 ms | 3.8 ms | ~95 |
 | | babashka | 18.0 ms | 8.3 ms | ~35 |
 
 The ordering is less dramatic than you might expect: a JIT on top, then two
